@@ -1,0 +1,29 @@
+name: backend-api
+agent: opencode
+model: claude-sonnet-4-5
+description: Backend API development with PostgreSQL, GitHub, and Docker
+
+mcp:
+  github:
+    type: local
+    command: ["npx", "-y", "@modelcontextprotocol/server-github"]
+    env:
+      GITHUB_TOKEN: "env:GITHUB_TOKEN"
+  postgres:
+    type: local
+    command: ["npx", "-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/mydb"]
+  docker:
+    type: local
+    command: ["npx", "-y", "@docker/mcp-server"]
+
+skills:
+  - name: tdd
+    source: registry
+    package: mattpocock/skills
+  - name: vercel-react-best-practices
+    source: registry
+    package: vercel-labs/agent-skills
+
+rules:
+  - path: ./docs/api-standards.md
+  - path: ./AGENTS.md

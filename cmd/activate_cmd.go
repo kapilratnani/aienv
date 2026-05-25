@@ -1,0 +1,83 @@
+package cmd
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/kapilratnani/aienv/internal/config"
+	"github.com/kapilratnani/aienv/internal/env"
+	"github.com/kapilratnani/aienv/internal/opencode"
+	"github.com/kapilratnani/aienv/internal/skills"
+	"github.com/spf13/cobra"
+)
+
+var activateCmd = &cobra.Command{
+	Use:   "activate <name>",
+	Short: "Print shell commands to activate an environment",
+	Long: `Prints shell commands that set up the environment for the current session.
+Used by the 'aienv' shell function with 'eval':
+
+  eval "$(aienv activate frontend-design)"`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		name := args[0]
+
+		if err := config.IsValidName(name); err != nil {
+			return err
+		}
+
+		e, err := env.Load(name)
+		if err != nil {
+			return fmt.Errorf("loading environment %q: %w", name, err)
+		}
+
+		if modelOverride != "" {
+			e.Model = modelOverride
+		}
+
+		missing := skills.VerifyAll(e.Skills)
+		if len(missing) > 0 {
+			fmt.Fprintf(os.Stderr, "Installing missing skills...\n")
+			if err := skills.InstallAll(missing); err != nil {
+				return fmt.Errorf("installing skills: %w", err)
+			}
+		}
+
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("getting cwd: %w", err)
+		}
+
+		cfg, err := opencode.Generate(e, cwd)
+		if err != nil {
+			return fmt.Errorf("generating opencode config: %w", err)
+		}
+
+		ocPath := config.OpenCodeJSON(name)
+		if err := os.WriteFile(ocPath, cfg, 0644); err != nil {
+			return fmt.Errorf("writing opencode config: %w", err)
+		}
+
+		absPath, _ := filepath.Abs(ocPath)
+
+		shell := filepath.Base(os.Getenv("SHELL"))
+
+		switch shell {
+		case "fish":
+			fmt.Printf("set -x OPENCODE_CONFIG %s;\n", absPath)
+			fmt.Println("opencode")
+			fmt.Printf("set -e OPENCODE_CONFIG;\n")
+		default:
+			fmt.Printf("export OPENCODE_CONFIG=%s\n", absPath)
+			fmt.Println("opencode")
+			fmt.Println("unset OPENCODE_CONFIG")
+		}
+
+		return nil
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(activateCmd)
+}

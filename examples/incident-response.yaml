@@ -1,0 +1,29 @@
+name: incident-response
+agent: opencode
+description: Production incident response with monitoring and communication
+
+mcp:
+  datadog:
+    type: local
+    command: ["npx", "-y", "@datadog/mcp-server"]
+  sentry:
+    type: local
+    command: ["npx", "-y", "@modelcontextprotocol/server-sentry"]
+  github:
+    type: local
+    command: ["npx", "-y", "@modelcontextprotocol/server-github"]
+  slack:
+    type: local
+    command: ["npx", "-y", "@slack/mcp-server"]
+
+skills:
+  - name: systematic-debugging
+    source: registry
+    package: obra/superpowers
+  - name: grill-me
+    source: registry
+    package: mattpocock/skills
+
+rules:
+  - path: ./docs/runbooks/
+  - path: ./docs/postmortem-template.md
