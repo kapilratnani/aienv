@@ -1,5 +1,9 @@
 # aienv — AI Environment Manager
 
+----
+:warning: This is Work In Progress. Not released yet.
+----
+
 Task-specific MCP servers, agent skills, and rules for AI coding agents — like Python's `virtualenv` for AI.
 
 ## Install
