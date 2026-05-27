@@ -10,11 +10,16 @@ import (
 const shellFunc = `# aienv - AI environment activation
 aienv() {
   case "$1" in
-    create|list|show|init|edit|delete|activate|completion|help|--help|-h)
+    create|list|show|init|edit|delete|activate|docker|completion|help|--help|-h)
       command aienv "$@"
       ;;
     *)
-      eval "$(command aienv activate "$@")"
+      case " $* " in
+        *" --docker "*|*" --docker")
+          command aienv activate "$@" ;;
+        *)
+          eval "$(command aienv activate "$@")" ;;
+      esac
       ;;
   esac
 }

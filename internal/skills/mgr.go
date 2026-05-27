@@ -14,7 +14,10 @@ func skillDir(name string) string {
 	paths := []string{
 		filepath.Join(home, ".config", "opencode", "skills", name),
 		filepath.Join(home, ".claude", "skills", name),
+		filepath.Join(home, ".claude", "skills", name),
 		filepath.Join(".agents", "skills", name),
+		filepath.Join(home, ".agents", "skills", name),
+		filepath.Join(".claude", "skills", name),
 	}
 	for _, p := range paths {
 		if _, err := os.Stat(filepath.Join(p, "SKILL.md")); err == nil {

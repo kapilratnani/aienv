@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/kapilratnani/aienv/internal/config"
+	"github.com/kapilratnani/aienv/internal/docker"
 	"github.com/kapilratnani/aienv/internal/env"
 	"github.com/kapilratnani/aienv/internal/opencode"
 	"github.com/kapilratnani/aienv/internal/skills"
@@ -60,6 +61,10 @@ Used by the 'aienv' shell function with 'eval':
 		ocPath := config.OpenCodeJSON(name)
 		if err := os.WriteFile(ocPath, cfg, 0644); err != nil {
 			return fmt.Errorf("writing opencode config: %w", err)
+		}
+
+		if dockerMode {
+			return docker.Run(e, cwd)
 		}
 
 		absPath, _ := filepath.Abs(ocPath)

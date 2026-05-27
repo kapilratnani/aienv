@@ -21,10 +21,15 @@ source ~/.zshrc  # or restart your shell
 # Create an environment
 aienv create backend-api
 
-# Activate it
+# Activate it (normal)
 aienv backend-api
 # → opens opencode with MCPs, skills, and rules loaded
 # → unset OPENCODE_CONFIG on exit
+
+# Activate it (Docker sandbox)
+aienv --docker backend-api
+# → opens opencode inside a Docker container
+# → container auto-removed on exit
 
 # List all environments
 aienv list
@@ -57,6 +62,8 @@ Each environment is stored in `~/.ai-envs/<name>/`:
 ```
 
 Activation sets `OPENCODE_CONFIG` to point at the generated `opencode.json`, spawns `opencode`, and unsets the variable on exit.
+
+With `--docker`, activation skips the shell eval and runs `docker run --rm -it` directly — mounting your workspace, config, skills, and `opencode` binary into an Ubuntu 24.04 container with Node.js, Python, and Go pre-installed for MCP server execution.
 
 Before launching, aienv validates all referenced environment variables and warns if any are missing:
 
@@ -145,14 +152,55 @@ Results are matched against the curated list to provide env var metadata when av
 
 Currently targets **OpenCode** via `OPENCODE_CONFIG` env var injection. Other agents (Claude Code, Cursor) planned.
 
+## Docker Sandbox
+
+Run `opencode` and its MCP servers inside a Docker container for filesystem and process isolation:
+
+```bash
+# Activate with Docker sandbox
+aienv --docker frontend-design
+
+# Or explicitly
+aienv activate --docker frontend-design
+
+# Build/rebuild the sandbox image
+aienv docker build
+
+# Check Docker availability
+aienv docker check
+```
+
+The sandbox mounts your workspace (`$(pwd)` → `/workspace`), agent config, and skills directory into the container. The `opencode` binary is mounted from your host PATH to keep versions in sync.
+
+### What runs inside the container
+
+- `opencode` (the AI agent)
+- MCP servers (launched by opencode via `npx`/`uvx`/`go run`)
+- Any shell commands the agent executes
+
+### What stays on the host
+
+- `aienv` orchestration (skill installation, config generation)
+- Project source code (mounted rw) — files persist when container exits
+- `~/.ssh` keys (mounted ro) — for git operations
+- Environment variable secrets (passed through via `-e`)
+
+### Requirements
+
+- Docker installed and running (Linux recommended; `--network host` behavior varies on macOS/Windows)
+- Image auto-built on first use (~980MB, Ubuntu 24.04 + Node.js + Python + Go)
+
 ## Commands
 
 | Command | Description |
 |---------|-------------|
 | `aienv create <name>` | Interactive environment creation |
 | `aienv <name>` | Activate environment (requires shell function) |
+| `aienv --docker <name>` | Activate in Docker sandbox |
 | `aienv list` | List all environments |
 | `aienv show <name>` | Show environment details |
 | `aienv init` | Install shell function to `.bashrc`/`.zshrc` |
 | `aienv edit <name>` | Edit environment in `$EDITOR` (fallback `vi`) |
 | `aienv delete <name>` | Delete environment with confirmation |
+| `aienv docker build` | Build/rebuild Docker sandbox image |
+| `aienv docker check` | Verify Docker availability |
