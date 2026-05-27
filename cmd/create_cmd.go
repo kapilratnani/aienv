@@ -144,7 +144,7 @@ func promptMCPServers(e *env.Env) error {
 		case "r":
 			promptRemoveMCP(e)
 		default:
-			for _, part := range strings.Split(input, ",") {
+			for part := range strings.SplitSeq(input, ",") {
 				part = strings.TrimSpace(part)
 				idx := 0
 				if _, err := fmt.Sscanf(part, "%d", &idx); err != nil || idx < 1 || idx > len(assets.CuratedMCPServers) {
@@ -225,7 +225,7 @@ func searchMCPServers(e *env.Env) error {
 		return nil
 	}
 
-	for _, part := range strings.Split(input, ",") {
+	for part := range strings.SplitSeq(input, ",") {
 		part = strings.TrimSpace(part)
 		idx := 0
 		if _, err := fmt.Sscanf(part, "%d", &idx); err != nil || idx < 1 || idx > len(results) {
@@ -360,18 +360,18 @@ func promptSkills(e *env.Env) error {
 		case "r":
 			promptRemoveSkill(e)
 		default:
-			for _, part := range strings.Split(input, ",") {
-				part = strings.TrimSpace(part)
-				idx := 0
-				if _, err := fmt.Sscanf(part, "%d", &idx); err != nil || idx < 1 || idx > len(assets.CuratedSkills) {
-					fmt.Printf("    Invalid: %s\n", part)
-					continue
-				}
-				item := assets.CuratedSkills[idx-1]
-				if hasSkill(e, item.Name) {
-					fmt.Printf("    %s already selected, skipping.\n", item.Name)
-					continue
-				}
+		for part := range strings.SplitSeq(input, ",") {
+			part = strings.TrimSpace(part)
+			idx := 0
+			if _, err := fmt.Sscanf(part, "%d", &idx); err != nil || idx < 1 || idx > len(assets.CuratedSkills) {
+				fmt.Printf("    Invalid: %s\n", part)
+				continue
+			}
+			item := assets.CuratedSkills[idx-1]
+			if hasSkill(e, item.Name) {
+				fmt.Printf("    %s already selected, skipping.\n", item.Name)
+				continue
+			}
 				e.Skills = append(e.Skills, env.Skill{
 					Name:    item.Name,
 					Source:  "registry",
@@ -435,7 +435,7 @@ func searchSkills(e *env.Env) error {
 		return nil
 	}
 
-	for _, part := range strings.Split(input, ",") {
+	for part := range strings.SplitSeq(input, ",") {
 		part = strings.TrimSpace(part)
 		idx := 0
 		if _, err := fmt.Sscanf(part, "%d", &idx); err != nil || idx < 1 || idx > len(results) {
@@ -529,7 +529,7 @@ func promptRules(e *env.Env) error {
 	if input == "" || input == "n" {
 		return nil
 	}
-	for _, p := range strings.Split(input, ",") {
+	for p := range strings.SplitSeq(input, ",") {
 		p = strings.TrimSpace(p)
 		if p != "" {
 			e.Rules = append(e.Rules, env.Rule{Path: p})
