@@ -1,93 +1,182 @@
-# aienv — AI Environment Manager
+# 🚀 aienv
 
-Task-specific MCP servers, agent skills, and rules for AI coding agents — like Python's `virtualenv` for AI.
+> Reproducible, isolated environments for AI coding agents.
 
-## Install
+Run AI coding agents inside project-scoped environments with only the MCPs, skills, rules, and tools your project needs.
+
+Think:
+- 🐍 `virtualenv` for AI agents
+- 🐳 Docker for coding workflows
+- 🧠 reproducible AI development environments
+
+---
+
+## ✨ Why aienv?
+
+AI coding setups become chaotic surprisingly fast.
+
+Different projects need different:
+- MCP servers
+- prompts/rules
+- coding skills
+- model providers
+- API credentials
+- tooling stacks
+
+Today most developers manage this with:
+- copied config files
+- hidden editor state
+- global MCP installs
+- shell scripts
+- README instructions
+
+This quickly becomes:
+- ❌ unreproducible
+- ❌ hard to share
+- ❌ insecure
+- ❌ difficult to debug
+- ❌ full of tool conflicts
+
+`aienv` fixes this by creating:
+
+✅ isolated AI environments  
+✅ reproducible coding workflows  
+✅ project-scoped MCPs and skills  
+✅ disposable Docker sandboxes  
+
+---
+
+# 🎥 Demo
+
+## Local Environment
 
 ```bash
-go install github.com/kapilratnani/aienv@latest
-```
-
-Then install the shell function:
-
-```bash
-aienv init
-source ~/.zshrc  # or restart your shell
-```
-
-## Quick Start
-
-```bash
-# Create an environment
-aienv create backend-api
-
-# Activate it (normal)
 aienv backend-api
-# → opens opencode with MCPs, skills, and rules loaded
-# → unset OPENCODE_CONFIG on exit
+```
 
-# Activate it (Docker sandbox)
+👉 Opens OpenCode with:
+- project MCPs
+- coding skills
+- rules
+- model config
+- environment variables
+
+loaded automatically.
+
+![Demo GIF](./docs/demo-local.gif)
+
+---
+
+## Docker Sandbox
+
+```bash
 aienv --docker backend-api
-# → opens opencode inside a Docker container
-# → container auto-removed on exit
-
-# List all environments
-aienv list
-
-# Show environment details
-aienv show backend-api
-
-# Edit environment config
-aienv edit backend-api
-
-# Delete an environment
-aienv delete backend-api
 ```
 
-The `aienv` shell function handles activation transparently — just run `aienv <name>` to start a session.
+👉 Runs the agent inside an isolated Docker container:
+- disposable runtime
+- isolated dependencies
+- sandboxed MCP execution
+- scoped filesystem access
 
-## How It Works
+![Docker Demo GIF](./docs/demo-docker.gif)
 
-Each environment is stored in `~/.ai-envs/<name>/`:
+---
 
+# 🔥 Core Features
+
+## 🧠 Project-Scoped AI Environments
+
+Each project gets its own:
+- MCP servers
+- prompts/rules
+- skills
+- models
+- credentials
+
+No more global AI configuration chaos.
+
+---
+
+## 🐳 Isolated Docker Execution
+
+Run coding agents in disposable containers.
+
+Perfect for:
+- secure execution
+- dependency isolation
+- reproducibility
+- experimenting safely
+
+Everything runs inside the sandbox:
+- OpenCode
+- MCP servers
+- agent shell commands
+
+---
+
+## 🔌 MCP Management
+
+Quickly compose environments using:
+- curated MCP registry
+- official MCP registry search
+- custom MCP servers
+
+Supports:
+- npm (`npx`)
+- Python (`uvx`)
+- Go (`go run`)
+
+---
+
+## 📦 Reproducible AI Workflows
+
+Clone repository → run environment → identical setup.
+
+```bash
+git clone my-project
+cd my-project
+
+aienv backend-api
 ```
-~/.ai-envs/
-├── backend-api/
-│   ├── ai-env.yaml          # your environment definition
-│   └── opencode.json        # generated OpenCode config
-├── frontend-design/
-│   └── ai-env.yaml
-└── incident-response/
-    └── ai-env.yaml
+
+Works across:
+- laptops
+- teams
+- CI systems
+- fresh machines
+
+---
+
+## ⚡ Instant Context Switching
+
+Switch between environments instantly:
+
+```bash
+aienv frontend-design
+aienv incident-response
+aienv trading-research
 ```
 
-Activation sets `OPENCODE_CONFIG` to point at the generated `opencode.json`, spawns `opencode`, and unsets the variable on exit.
+Each environment loads its own:
+- skills
+- MCPs
+- prompts
+- credentials
 
-With `--docker`, activation skips the shell eval and runs `docker run --rm -it` directly — mounting your workspace, config, skills, and `opencode` binary into an Ubuntu 24.04 container with Node.js, Python, and Go pre-installed for MCP server execution.
+---
 
-Before launching, aienv validates all referenced environment variables and warns if any are missing:
-
-```
-  Warning: MCP server "github" may not work — set GITHUB_TOKEN
-```
-
-## Environment Format
+# 🏗 Example Environment
 
 ```yaml
 name: backend-api
 agent: opencode
 model: claude-sonnet-4-5
-description: Backend API development environment
 
 mcp:
   github:
     type: local
     command: ["npx", "-y", "@modelcontextprotocol/server-github"]
-    env:
-      GITHUB_TOKEN: "env:GITHUB_TOKEN"
-  postgres:
-    type: remote
-    url: "https://mcp.example.com/postgres"
 
 skills:
   - name: api-design
@@ -95,112 +184,154 @@ skills:
     package: vercel-labs/agent-skills
 
 rules:
-  - path: ./docs/backend-standards.md
   - path: ./AGENTS.md
 ```
 
-## Create Flow
+---
 
-- **Curated list**: 20 popular MCPs and 20 popular skills shown inline. Data comes from `curated/mcps.yaml` and `curated/skills.yaml` at the project root.
-- **User overrides**: Drop YAML files in `~/.config/aienv/curated/*.yaml` to add or override MCPs/skills. Overridden entries are tagged `(user override)` in the menu.
-- **Env var prompts**: When selecting a curated MCP that needs credentials, aienv prints which environment variables to set.
-- **Online search**: Search the [Official MCP Registry](https://registry.modelcontextprotocol.io) or [skills.sh](https://skills.sh) directly from the prompts. Registry results are enriched with curated metadata when available.
-- **Custom entry**: Type any MCP server or skill manually.
+# 🚀 Quick Start
 
-### Environment Variables (Activation-Time Validation)
-
-When you activate an environment, aienv checks all `env:KEY` references in MCP configurations against your shell environment. Missing variables produce a warning:
-
-```
-  Warning: MCP server "brave-search" may not work — set BRAVE_API_KEY
-  Warning: MCP server "datadog" may not work — set DATADOG_API_KEY, DATADOG_APP_KEY
-```
-
-This helps catch missing credentials before the agent starts.
-
-## Curated MCP Servers
-
-12 of the 20 curated MCPs require environment variables. During `aienv create`, selecting one shows the required variables.
-
-| MCP | Required Env Vars |
-|-----|------------------|
-| GitHub | `GITHUB_TOKEN` |
-| Sentry | `SENTRY_TOKEN`, `SENTRY_ORG` |
-| Brave Search | `BRAVE_API_KEY` |
-| Slack | `SLACK_TOKEN` |
-| Stripe | `STRIPE_API_KEY` |
-| Linear | `LINEAR_API_KEY` |
-| Notion | `NOTION_TOKEN` |
-| Figma | `FIGMA_ACCESS_TOKEN` |
-| Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
-| PagerDuty | `PAGERDUTY_API_KEY` |
-| Datadog | `DATADOG_API_KEY`, `DATADOG_APP_KEY` |
-| Gmail | `GMAIL_OAUTH_PATH` |
-| Jira | `JIRA_HOST`, `JIRA_EMAIL`, `JIRA_API_TOKEN` |
-
-## Registry MCP Search
-
-When searching the Official MCP Registry, aienv now parses the `packages[]` response to determine the correct runtime command:
-
-- **npm** packages → `npx -y <package>`
-- **PyPI** packages → `uvx <package>`
-- **Go** packages → `go run <package>`
-
-Results are matched against the curated list to provide env var metadata when available.
-
-## Supported Agents
-
-Currently targets **OpenCode** via `OPENCODE_CONFIG` env var injection. Other agents (Claude Code, Cursor) planned.
-
-## Docker Sandbox
-
-Run `opencode` and its MCP servers inside a Docker container for filesystem and process isolation:
+## Install
 
 ```bash
-# Activate with Docker sandbox
-aienv --docker frontend-design
-
-# Or explicitly
-aienv activate --docker frontend-design
-
-# Build/rebuild the sandbox image
-aienv docker build
-
-# Check Docker availability
-aienv docker check
+go install github.com/kapilratnani/aienv@latest
 ```
 
-The sandbox mounts your workspace (`$(pwd)` → `/workspace`), agent config, and skills directory into the container. The `opencode` binary is mounted from your host PATH to keep versions in sync.
+Initialize shell integration:
 
-### What runs inside the container
+```bash
+aienv init
+source ~/.zshrc
+```
 
-- `opencode` (the AI agent)
-- MCP servers (launched by opencode via `npx`/`uvx`/`go run`)
-- Any shell commands the agent executes
+---
 
-### What stays on the host
+## Create Environment
 
-- `aienv` orchestration (skill installation, config generation)
-- Project source code (mounted rw) — files persist when container exits
-- `~/.ssh` keys (mounted ro) — for git operations
-- Environment variable secrets (passed through via `-e`)
+```bash
+aienv create backend-api
+```
 
-### Requirements
+Interactive setup includes:
+- curated MCP selection
+- skill selection
+- official registry search
+- environment validation
 
-- Docker installed and running (Linux recommended; `--network host` behavior varies on macOS/Windows)
-- Image auto-built on first use (~980MB, Ubuntu 24.04 + Node.js + Python + Go)
+---
 
-## Commands
+## Activate Environment
+
+```bash
+aienv backend-api
+```
+
+---
+
+## Run in Docker Sandbox
+
+```bash
+aienv --docker backend-api
+```
+
+---
+
+# 🐳 Docker Sandbox
+
+The sandbox provides:
+- isolated runtime
+- disposable execution
+- dependency isolation
+- safer agent execution
+
+### Runs inside container
+✅ OpenCode  
+✅ MCP servers  
+✅ shell commands  
+
+### Stays on host
+✅ source code  
+✅ SSH keys  
+✅ orchestration logic  
+
+---
+
+# 🧩 Supported MCP Ecosystem
+
+Supports:
+- GitHub
+- Slack
+- Postgres
+- Sentry
+- Datadog
+- Notion
+- Stripe
+- Jira
+- Brave Search
+- and more...
+
+Search directly from:
+- Official MCP Registry
+- skills.sh
+
+---
+
+# ⚙️ Commands
 
 | Command | Description |
-|---------|-------------|
-| `aienv create <name>` | Interactive environment creation |
-| `aienv <name>` | Activate environment (requires shell function) |
-| `aienv --docker <name>` | Activate in Docker sandbox |
-| `aienv list` | List all environments |
-| `aienv show <name>` | Show environment details |
-| `aienv init` | Install shell function to `.bashrc`/`.zshrc` |
-| `aienv edit <name>` | Edit environment in `$EDITOR` (fallback `vi`) |
-| `aienv delete <name>` | Delete environment with confirmation |
-| `aienv docker build` | Build/rebuild Docker sandbox image |
-| `aienv docker check` | Verify Docker availability |
+|---|---|
+| `aienv create <name>` | Create environment |
+| `aienv <name>` | Activate environment |
+| `aienv --docker <name>` | Run in Docker sandbox |
+| `aienv list` | List environments |
+| `aienv show <name>` | Show config |
+| `aienv edit <name>` | Edit environment |
+| `aienv delete <name>` | Delete environment |
+| `aienv docker build` | Build sandbox image |
+
+---
+
+# 🧠 Philosophy
+
+AI coding agents are becoming infrastructure.
+
+Infrastructure needs:
+- isolation
+- reproducibility
+- portability
+- composability
+- security boundaries
+
+`aienv` brings these ideas to AI development workflows.
+
+---
+
+# 🛣 Roadmap
+
+- [ ] Claude Code support
+- [ ] Cursor integration
+- [ ] Remote execution
+- [ ] Permission policies
+- [ ] Environment sharing
+- [ ] CI integration
+- [ ] Multi-agent orchestration
+
+---
+
+# 🤝 Contributing
+
+PRs, ideas, and feedback welcome.
+
+If you build interesting environments or workflows, open a discussion 🚀
+
+---
+
+# ⭐ Star History
+
+[Add star-history chart here]
+
+---
+
+# 📜 License
+
+MIT
