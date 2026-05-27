@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -18,6 +19,13 @@ type registryResponse struct {
 		Server struct {
 			Name        string `json:"name"`
 			Description string `json:"description"`
+			Packages    []struct {
+				RegistryType string `json:"registryType"`
+				Identifier   string `json:"identifier"`
+				Transport    struct {
+					Type string `json:"type"`
+				} `json:"transport"`
+			} `json:"packages"`
 		} `json:"server"`
 	} `json:"servers"`
 	Metadata struct {
@@ -61,13 +69,48 @@ func (r *OfficialRegistry) Search(ctx context.Context, query string, limit int) 
 
 	items := make([]MCPServerItem, 0, len(regResp.Servers))
 	for _, s := range regResp.Servers {
-		items = append(items, MCPServerItem{
-			Name:        s.Server.Name,
+		shortName := shortRegistryName(s.Server.Name)
+		item := MCPServerItem{
+			Name:        shortName,
+			DisplayName: s.Server.Name,
 			Description: s.Server.Description,
 			Type:        "local",
-			Command:     fmt.Sprintf("npx -y @modelcontextprotocol/server-%s", s.Server.Name),
-		})
+			Source:      "registry",
+		}
+		if len(s.Server.Packages) > 0 {
+			pkg := s.Server.Packages[0]
+			item.RegistryType = pkg.RegistryType
+			item.Package = pkg.Identifier
+			if pkg.Transport.Type == "stdio" {
+				item.Type = "local"
+			}
+			item.Command = registryCommand(pkg.RegistryType, pkg.Identifier)
+		}
+		items = append(items, item)
 	}
 
 	return items, nil
+}
+
+func shortRegistryName(full string) string {
+	parts := strings.Split(full, "/")
+	last := parts[len(parts)-1]
+	last = strings.TrimPrefix(last, "server-")
+	last = strings.TrimSuffix(last, "-mcp")
+	last = strings.TrimSuffix(last, "-server")
+	last = strings.ReplaceAll(last, "_", "-")
+	return last
+}
+
+func registryCommand(registryType, identifier string) string {
+	switch registryType {
+	case "npm":
+		return fmt.Sprintf("npx -y %s", identifier)
+	case "pypi":
+		return fmt.Sprintf("uvx %s", identifier)
+	case "go":
+		return fmt.Sprintf("go run %s", identifier)
+	default:
+		return fmt.Sprintf("npx -y %s", identifier)
+	}
 }

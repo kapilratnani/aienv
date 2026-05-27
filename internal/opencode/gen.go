@@ -28,6 +28,10 @@ func Generate(e *env.Env, cwd string) ([]byte, error) {
 		Instructions: make([]string, 0, len(e.Rules)),
 	}
 
+	if e.Model != "" {
+		cfg.Model = e.Model
+	}
+
 	for name, srv := range e.MCPServers {
 		cfg.MCP[name] = mcpEntry{
 			Type:    srv.Type,

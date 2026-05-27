@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/kapilratnani/aienv/internal/config"
 	"github.com/kapilratnani/aienv/internal/env"
@@ -44,6 +45,8 @@ Used by the 'aienv' shell function with 'eval':
 			}
 		}
 
+		checkMCPEnvVars(e)
+
 		cwd, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("getting cwd: %w", err)
@@ -76,6 +79,29 @@ Used by the 'aienv' shell function with 'eval':
 
 		return nil
 	},
+}
+
+func checkMCPEnvVars(e *env.Env) {
+	for name, srv := range e.MCPServers {
+		if len(srv.Env) == 0 {
+			continue
+		}
+		var missingVars []string
+		for key, val := range srv.Env {
+			if len(val) > 4 && val[:4] == "env:" {
+				envKey := val[4:]
+				if os.Getenv(envKey) == "" {
+					missingVars = append(missingVars, envKey)
+				}
+			} else if os.Getenv(key) == "" {
+				missingVars = append(missingVars, key)
+			}
+		}
+		if len(missingVars) > 0 {
+			fmt.Fprintf(os.Stderr, "  Warning: MCP server %q may not work — set %s\n",
+				name, strings.Join(missingVars, ", "))
+		}
+	}
 }
 
 func init() {

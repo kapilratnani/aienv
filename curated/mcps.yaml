@@ -1,0 +1,232 @@
+mcps:
+  - name: github
+    displayName: GitHub
+    description: "Full GitHub API: repos, issues, PRs, Actions"
+    type: local
+    registryType: npm
+    package: "@modelcontextprotocol/server-github"
+    command: npx -y @modelcontextprotocol/server-github
+    env:
+      - key: GITHUB_TOKEN
+        description: GitHub Personal Access Token
+        required: true
+
+  - name: postgresql
+    displayName: PostgreSQL
+    description: "Read-only database access with schema inspection"
+    type: local
+    registryType: npm
+    package: "@modelcontextprotocol/server-postgres"
+    command: npx -y @modelcontextprotocol/server-postgres postgresql://localhost/mydb
+
+  - name: filesystem
+    displayName: Filesystem
+    description: "Secure file operations with configurable access"
+    type: local
+    registryType: npm
+    package: "@modelcontextprotocol/server-filesystem"
+    command: npx -y @modelcontextprotocol/server-filesystem
+
+  - name: sentry
+    displayName: Sentry
+    description: "Error tracking, stack traces, frequency trends"
+    type: local
+    registryType: npm
+    package: "@modelcontextprotocol/server-sentry"
+    command: npx -y @modelcontextprotocol/server-sentry
+    env:
+      - key: SENTRY_TOKEN
+        description: Sentry Auth Token
+        required: true
+      - key: SENTRY_ORG
+        description: Sentry Organization slug
+        required: false
+
+  - name: docker
+    displayName: Docker
+    description: "Container management: images, volumes, networks"
+    type: local
+    registryType: npm
+    package: "@docker/mcp-server"
+    command: npx -y @docker/mcp-server
+
+  - name: brave-search
+    displayName: Brave Search
+    description: "Web and local search using Brave Search API"
+    type: local
+    registryType: npm
+    package: "@brave/mcp-server"
+    command: npx -y @brave/mcp-server
+    env:
+      - key: BRAVE_API_KEY
+        description: Brave Search API key
+        required: true
+
+  - name: playwright
+    displayName: Playwright
+    description: "Browser automation: Chrome, Firefox, Safari"
+    type: local
+    registryType: npm
+    package: "@executeautomation/mcp-playwright"
+    command: npx -y @executeautomation/mcp-playwright
+
+  - name: kubernetes
+    displayName: Kubernetes
+    description: "K8s cluster ops: deployments, pods, services, logs"
+    type: local
+    registryType: npm
+    package: "@kubernetes/mcp-server"
+    command: npx -y @kubernetes/mcp-server
+    env:
+      - key: KUBERNETES_CONTEXT
+        description: Kubernetes context to use
+        required: false
+
+  - name: slack
+    displayName: Slack
+    description: "Channels, messages, search, thread context"
+    type: local
+    registryType: npm
+    package: "@slack/mcp-server"
+    command: npx -y @slack/mcp-server
+    env:
+      - key: SLACK_TOKEN
+        description: Slack Bot Token
+        required: true
+
+  - name: stripe
+    displayName: Stripe
+    description: "Payments, customers, subscriptions, invoices, refunds"
+    type: local
+    registryType: npm
+    package: "@stripe/mcp-server"
+    command: npx -y @stripe/mcp-server
+    env:
+      - key: STRIPE_API_KEY
+        description: Stripe Secret API Key
+        required: true
+
+  - name: linear
+    displayName: Linear
+    description: "Issue tracking, cycles, projects, sprint management"
+    type: local
+    registryType: npm
+    package: "@linear/mcp-server"
+    command: npx -y @linear/mcp-server
+    env:
+      - key: LINEAR_API_KEY
+        description: Linear API Key
+        required: true
+
+  - name: notion
+    displayName: Notion
+    description: "Read/write pages, databases, blocks, search"
+    type: local
+    registryType: npm
+    package: "@notion/mcp-server"
+    command: npx -y @notion/mcp-server
+    env:
+      - key: NOTION_TOKEN
+        description: Notion Integration Token
+        required: true
+
+  - name: figma
+    displayName: Figma
+    description: "File access, component inspection, design tokens"
+    type: remote
+    registryType: npm
+    package: "@modelcontextprotocol/server-figma"
+    url: "https://mcp.figma.com/v1"
+    command: npx -y @modelcontextprotocol/server-figma
+    env:
+      - key: FIGMA_ACCESS_TOKEN
+        description: Figma Personal Access Token
+        required: true
+
+  - name: supabase
+    displayName: Supabase
+    description: "Managed Postgres + auth + storage + edge functions"
+    type: local
+    registryType: npm
+    package: "@supabase/mcp-server"
+    command: npx -y @supabase/mcp-server
+    env:
+      - key: SUPABASE_URL
+        description: Supabase project URL
+        required: true
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        description: Supabase service role key
+        required: true
+
+  - name: context7
+    displayName: Context7
+    description: "Real-time library documentation retrieval"
+    type: local
+    registryType: npm
+    package: "@context7/mcp-server"
+    command: npx -y @context7/mcp-server
+
+  - name: pagerduty
+    displayName: PagerDuty
+    description: "Incident management, on-call schedules, alerts"
+    type: local
+    registryType: npm
+    package: "@pagerduty/mcp-server"
+    command: npx -y @pagerduty/mcp-server
+    env:
+      - key: PAGERDUTY_API_KEY
+        description: PagerDuty API Key
+        required: true
+
+  - name: datadog
+    displayName: Datadog
+    description: "Metrics, logs, alerts, APM dashboards"
+    type: local
+    registryType: npm
+    package: "@datadog/mcp-server"
+    command: npx -y @datadog/mcp-server
+    env:
+      - key: DATADOG_API_KEY
+        description: Datadog API Key
+        required: true
+      - key: DATADOG_APP_KEY
+        description: Datadog Application Key
+        required: true
+
+  - name: gmail
+    displayName: Gmail
+    description: "Search, read, send, reply, manage labels"
+    type: local
+    registryType: npm
+    package: "@gmail/mcp-server"
+    command: npx -y @gmail/mcp-server
+    env:
+      - key: GMAIL_OAUTH_PATH
+        description: Path to Gmail OAuth credentials
+        required: true
+
+  - name: jira
+    displayName: Jira
+    description: "Issues, workflows, sprints, boards"
+    type: local
+    registryType: npm
+    package: "@jira/mcp-server"
+    command: npx -y @jira/mcp-server
+    env:
+      - key: JIRA_HOST
+        description: Jira instance URL
+        required: true
+      - key: JIRA_EMAIL
+        description: Jira account email
+        required: true
+      - key: JIRA_API_TOKEN
+        description: Jira API Token
+        required: true
+
+  - name: terraform
+    displayName: Terraform
+    description: "IaC: plan/apply configurations, manage state"
+    type: local
+    registryType: npm
+    package: "@terraform/mcp-server"
+    command: npx -y @terraform/mcp-server

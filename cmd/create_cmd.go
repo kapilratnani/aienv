@@ -108,6 +108,11 @@ func promptModel(e *env.Env) error {
 }
 
 func promptMCPServers(e *env.Env) error {
+	curatedMCPs, err := assets.GetCuratedMCPs()
+	if err != nil {
+		return fmt.Errorf("loading curated MCPs: %w", err)
+	}
+
 	for {
 		fmt.Println("\nMCP Servers")
 		fmt.Println("-----------")
@@ -119,8 +124,12 @@ func promptMCPServers(e *env.Env) error {
 		}
 
 		fmt.Println("\n  Popular MCP servers:")
-		for i, mcp := range assets.CuratedMCPServers {
-			fmt.Printf("    %2d. %-20s %s\n", i+1, mcp.Name, mcp.Description)
+		for i, mcp := range curatedMCPs {
+			sourceTag := ""
+			if mcp.Source == "user" {
+				sourceTag = " (user override)"
+			}
+			fmt.Printf("    %2d. %-20s %s%s\n", i+1, mcp.DisplayName, mcp.Description, sourceTag)
 		}
 		fmt.Println("  s.  Search online  |  c.  Custom entry  |  r.  Remove  |  d.  Done")
 		fmt.Print("  Choice (e.g. 1,3, s, c, r, d): ")
@@ -147,11 +156,11 @@ func promptMCPServers(e *env.Env) error {
 			for part := range strings.SplitSeq(input, ",") {
 				part = strings.TrimSpace(part)
 				idx := 0
-				if _, err := fmt.Sscanf(part, "%d", &idx); err != nil || idx < 1 || idx > len(assets.CuratedMCPServers) {
+				if _, err := fmt.Sscanf(part, "%d", &idx); err != nil || idx < 1 || idx > len(curatedMCPs) {
 					fmt.Printf("    Invalid: %s\n", part)
 					continue
 				}
-				addCuratedMCP(e, assets.CuratedMCPServers[idx-1])
+				addCuratedMCP(e, curatedMCPs[idx-1])
 			}
 		}
 	}
@@ -161,7 +170,7 @@ func addCuratedMCP(e *env.Env, item registry.MCPServerItem) {
 	if e.MCPServers == nil {
 		e.MCPServers = make(map[string]env.MCPServer)
 	}
-	name := strings.ToLower(strings.ReplaceAll(item.Name, " ", "-"))
+	name := item.Name
 	if _, exists := e.MCPServers[name]; exists {
 		fmt.Printf("    %s already selected, skipping.\n", name)
 		return
@@ -174,8 +183,25 @@ func addCuratedMCP(e *env.Env, item registry.MCPServerItem) {
 	} else {
 		srv.URL = item.URL
 	}
+	if len(item.EnvVars) > 0 {
+		srv.Env = make(map[string]string, len(item.EnvVars))
+		for _, ev := range item.EnvVars {
+			srv.Env[ev.Key] = fmt.Sprintf("env:%s", ev.Key)
+		}
+	}
 	e.MCPServers[name] = srv
 	fmt.Printf("    Added %s\n", name)
+
+	if len(item.EnvVars) > 0 {
+		fmt.Printf("    Note: %s needs environment variables:\n", item.DisplayName)
+		for _, ev := range item.EnvVars {
+			req := ""
+			if ev.Required {
+				req = " (required)"
+			}
+			fmt.Printf("      - %s: %s%s\n", ev.Key, ev.Description, req)
+		}
+	}
 }
 
 func searchMCPServers(e *env.Env) error {
@@ -212,7 +238,11 @@ func searchMCPServers(e *env.Env) error {
 		if desc == "" {
 			desc = "(no description)"
 		}
-		fmt.Printf("    %2d. %-20s %s\n", i+1, item.Name, desc)
+		displayName := item.DisplayName
+		if displayName == "" {
+			displayName = item.Name
+		}
+		fmt.Printf("    %2d. %-20s %s\n", i+1, displayName, desc)
 	}
 	fmt.Print("  Select (e.g. 1,3, or blank to skip): ")
 
@@ -232,7 +262,15 @@ func searchMCPServers(e *env.Env) error {
 			fmt.Printf("    Invalid: %s\n", part)
 			continue
 		}
-		addCuratedMCP(e, results[idx-1])
+		item := results[idx-1]
+
+		if curated := assets.LookupCuratedMCP(item.Name); curated != nil {
+			item.EnvVars = curated.EnvVars
+			if item.DisplayName == "" {
+				item.DisplayName = curated.DisplayName
+			}
+		}
+		addCuratedMCP(e, item)
 	}
 	return nil
 }
@@ -321,6 +359,11 @@ func promptRemoveMCP(e *env.Env) error {
 }
 
 func promptSkills(e *env.Env) error {
+	curatedSkills, err := assets.GetCuratedSkills()
+	if err != nil {
+		return fmt.Errorf("loading curated skills: %w", err)
+	}
+
 	for {
 		fmt.Println("\nAgent Skills")
 		fmt.Println("-----------")
@@ -335,8 +378,12 @@ func promptSkills(e *env.Env) error {
 		}
 
 		fmt.Println("\n  Popular skills:")
-		for i, sk := range assets.CuratedSkills {
-			fmt.Printf("    %2d. %-35s %s\n", i+1, sk.Name, sk.Package)
+		for i, sk := range curatedSkills {
+			sourceTag := ""
+			if sk.Source == "user" {
+				sourceTag = " (user override)"
+			}
+			fmt.Printf("    %2d. %-35s %s%s\n", i+1, sk.Name, sk.Package, sourceTag)
 		}
 		fmt.Println("  s.  Search online  |  c.  Custom entry  |  r.  Remove  |  d.  Done")
 		fmt.Print("  Choice (e.g. 1,3, s, c, r, d): ")
@@ -360,18 +407,18 @@ func promptSkills(e *env.Env) error {
 		case "r":
 			promptRemoveSkill(e)
 		default:
-		for part := range strings.SplitSeq(input, ",") {
-			part = strings.TrimSpace(part)
-			idx := 0
-			if _, err := fmt.Sscanf(part, "%d", &idx); err != nil || idx < 1 || idx > len(assets.CuratedSkills) {
-				fmt.Printf("    Invalid: %s\n", part)
-				continue
-			}
-			item := assets.CuratedSkills[idx-1]
-			if hasSkill(e, item.Name) {
-				fmt.Printf("    %s already selected, skipping.\n", item.Name)
-				continue
-			}
+			for part := range strings.SplitSeq(input, ",") {
+				part = strings.TrimSpace(part)
+				idx := 0
+				if _, err := fmt.Sscanf(part, "%d", &idx); err != nil || idx < 1 || idx > len(curatedSkills) {
+					fmt.Printf("    Invalid: %s\n", part)
+					continue
+				}
+				item := curatedSkills[idx-1]
+				if hasSkill(e, item.Name) {
+					fmt.Printf("    %s already selected, skipping.\n", item.Name)
+					continue
+				}
 				e.Skills = append(e.Skills, env.Skill{
 					Name:    item.Name,
 					Source:  "registry",
