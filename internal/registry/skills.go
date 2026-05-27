@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -14,9 +15,9 @@ type SkillsDotSh struct {
 }
 
 type skillsSearchResponse struct {
-	Query    string `json:"query"`
-	Skills   []skillsResult `json:"skills"`
-	Count    int    `json:"count"`
+	Query  string         `json:"query"`
+	Skills []skillsResult `json:"skills"`
+	Count  int            `json:"count"`
 }
 
 type skillsResult struct {
@@ -74,10 +75,14 @@ func (s *SkillsDotSh) Search(ctx context.Context, query string, limit int) ([]Sk
 
 func extractPackage(id string) string {
 	parts := splitN(id, "/", 3)
-	if len(parts) >= 2 {
-		return parts[0] + "/" + parts[1]
+	if len(parts) < 2 {
+		return id
 	}
-	return id
+	// If the first segment looks like a domain (contains a dot), use the full ID
+	if strings.Contains(parts[0], ".") {
+		return id
+	}
+	return parts[0] + "/" + parts[1]
 }
 
 func splitN(s, sep string, n int) []string {
@@ -85,7 +90,7 @@ func splitN(s, sep string, n int) []string {
 	start := 0
 	for i := 0; i < n-1 && start < len(s); i++ {
 		if idx := indexOf(s[start:], sep); idx >= 0 {
-			out = append(out, s[:start+idx])
+			out = append(out, s[start:start+idx])
 			start += idx + len(sep)
 		}
 	}
