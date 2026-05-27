@@ -9,9 +9,9 @@ import (
 )
 
 type opencodeConfig struct {
-	Model        string                `json:"model,omitempty"`
-	MCP          map[string]mcpEntry   `json:"mcp"`
-	Instructions []string              `json:"instructions"`
+	Model        string              `json:"model,omitempty"`
+	MCP          map[string]mcpEntry `json:"mcp"`
+	Instructions []string            `json:"instructions"`
 }
 
 type mcpEntry struct {
@@ -26,10 +26,6 @@ func Generate(e *env.Env, cwd string) ([]byte, error) {
 	cfg := opencodeConfig{
 		MCP:          make(map[string]mcpEntry, len(e.MCPServers)),
 		Instructions: make([]string, 0, len(e.Rules)),
-	}
-
-	if e.Model != "" {
-		cfg.Model = "anthropic/" + e.Model
 	}
 
 	for name, srv := range e.MCPServers {
