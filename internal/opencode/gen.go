@@ -12,6 +12,11 @@ type opencodeConfig struct {
 	Model        string              `json:"model,omitempty"`
 	MCP          map[string]mcpEntry `json:"mcp"`
 	Instructions []string            `json:"instructions"`
+	Permission   *permissionConfig   `json:"permission,omitempty"`
+}
+
+type permissionConfig struct {
+	Skill map[string]string `json:"skill"`
 }
 
 type mcpEntry struct {
@@ -49,6 +54,12 @@ func Generate(e *env.Env, cwd string) ([]byte, error) {
 		}
 		cfg.Instructions = append(cfg.Instructions, path)
 	}
+
+	skillPerm := map[string]string{"*": "deny"}
+	for _, sk := range e.Skills {
+		skillPerm[sk.Name] = "allow"
+	}
+	cfg.Permission = &permissionConfig{Skill: skillPerm}
 
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
