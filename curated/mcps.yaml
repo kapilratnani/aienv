@@ -163,8 +163,8 @@ mcps:
     description: "Real-time library documentation retrieval"
     type: local
     registryType: npm
-    package: "@context7/mcp-server"
-    command: npx -y @context7/mcp-server
+    package: "@upstash/context7-mcp"
+    command: npx -y @upstash/context7-mcp
 
   - name: pagerduty
     displayName: PagerDuty
