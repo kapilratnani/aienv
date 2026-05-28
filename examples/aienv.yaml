@@ -1,0 +1,27 @@
+name: aienv
+agent: opencode
+model: opencode/deepseek-v4-flash-free
+description: Self-referential environment for developing aienv itself
+prompt: Use caveman and tdd skills
+
+mcp:
+  github:
+    type: local
+    command: ["npx", "-y", "@modelcontextprotocol/server-github"]
+    env:
+      GITHUB_TOKEN: "env:GITHUB_TOKEN"
+
+skills:
+  - name: tdd
+    source: registry
+    package: mattpocock/skills
+  - name: grill-me
+    source: registry
+    package: mattpocock/skills
+  - name: caveman
+    source: local
+    path: ./skills/caveman
+
+rules:
+  - path: ./AGENTS.md
+  - path: ./internal/docker/*.md
