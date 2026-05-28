@@ -1,0 +1,153 @@
+package claude
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/kapilratnani/aienv/internal/agents"
+	"github.com/kapilratnani/aienv/internal/env"
+)
+
+func init() {
+	agents.Register(&agent{})
+}
+
+type agent struct{}
+
+func (a *agent) Name() string { return "claude-code" }
+
+type claudeConfig struct {
+	MCPServers map[string]mcpEntry `json:"mcpServers"`
+}
+
+type mcpEntry struct {
+	Command string            `json:"command"`
+	Args    []string          `json:"args,omitempty"`
+	Env     map[string]string `json:"env,omitempty"`
+}
+
+func (a *agent) GenerateFiles(e *env.Env, cwd string) ([]agents.AgentFile, error) {
+	var files []agents.AgentFile
+
+	cfg := claudeConfig{
+		MCPServers: make(map[string]mcpEntry, len(e.MCPServers)),
+	}
+
+	for name, srv := range e.MCPServers {
+		if srv.Type == "remote" {
+			fmt.Fprintf(os.Stderr, "  Warning: skipping remote MCP %q — Claude Code --mcp-config only supports local servers\n", name)
+			continue
+		}
+		entry := mcpEntry{}
+		if len(srv.Command) > 0 {
+			entry.Command = srv.Command[0]
+			if len(srv.Command) > 1 {
+				entry.Args = srv.Command[1:]
+			}
+		}
+		if len(srv.Env) > 0 {
+			entry.Env = make(map[string]string, len(srv.Env))
+			for k, v := range srv.Env {
+				if len(v) > 4 && v[:4] == "env:" {
+					entry.Env[k] = fmt.Sprintf("${%s}", v[4:])
+				} else {
+					entry.Env[k] = v
+				}
+			}
+		}
+		cfg.MCPServers[name] = entry
+	}
+
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("marshalling claude mcp config: %w", err)
+	}
+	files = append(files, agents.AgentFile{Path: "mcp-config.json", Content: data})
+
+	claudeDir := filepath.Join(envDir(e.Name), "claude-config")
+
+	var promptLines []string
+
+	if e.Prompt != "" {
+		promptLines = append(promptLines, e.Prompt)
+	}
+
+	if len(promptLines) > 0 {
+		claudeMD := strings.Join(promptLines, "\n") + "\n"
+		files = append(files, agents.AgentFile{
+			Path:    "CLAUDE.md",
+			Content: []byte(claudeMD),
+		})
+	} else {
+		files = append(files, agents.AgentFile{
+			Path:    "CLAUDE.md",
+			Content: []byte{},
+		})
+	}
+
+	skillDir := filepath.Join(claudeDir, "skills")
+	for _, sk := range e.Skills {
+		src := findSkillDir(sk.Name)
+		if src == "" {
+			continue
+		}
+		dst := filepath.Join(skillDir, sk.Name)
+		if _, err := os.Stat(dst); os.IsNotExist(err) {
+			os.MkdirAll(filepath.Dir(dst), 0755)
+			os.Symlink(src, dst)
+		}
+	}
+
+	return files, nil
+}
+
+func envDir(name string) string {
+	return filepath.Join(os.Getenv("HOME"), ".ai-envs", name)
+}
+
+func findSkillDir(name string) string {
+	home, _ := os.UserHomeDir()
+	paths := []string{
+		filepath.Join(home, ".claude", "skills"),
+		filepath.Join(".claude", "skills"),
+	}
+	for _, base := range paths {
+		p := filepath.Join(base, name)
+		if info, err := os.Stat(p); err == nil && info.IsDir() {
+			if _, err := os.Stat(filepath.Join(p, "SKILL.md")); err == nil {
+				abs, _ := filepath.Abs(p)
+				return abs
+			}
+		}
+	}
+	return ""
+}
+
+func (a *agent) ActivateCommand(envDir string, e *env.Env) string {
+	var args []string
+	args = append(args, "claude")
+	args = append(args, "--mcp-config", filepath.Join(envDir, "mcp-config.json"))
+	args = append(args, "--append-system-prompt-file", filepath.Join(envDir, "CLAUDE.md"))
+
+	for _, rule := range e.Rules {
+		path := rule.Path
+		if !filepath.IsAbs(path) {
+			cwd, _ := os.Getwd()
+			path = filepath.Join(cwd, path)
+		}
+		args = append(args, "--append-system-prompt-file", path)
+	}
+
+	args = append(args, "--strict-mcp-config")
+
+	if e.Model != "" {
+		args = append(args, "--model", e.Model)
+	}
+
+	claudeConfigDir := filepath.Join(envDir, "claude-config")
+
+	return fmt.Sprintf("export CLAUDE_CONFIG_DIR=%s\n%s\nunset CLAUDE_CONFIG_DIR\n", claudeConfigDir, strings.Join(args, " "))
+}

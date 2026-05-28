@@ -10,25 +10,16 @@ import (
 	"github.com/kapilratnani/aienv/internal/env"
 )
 
-const imageTag = "aienv/sandbox:latest"
-
-const dockerfile = `FROM ubuntu:24.04
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    git \
-    golang-go \
-    nodejs \
-    npm \
-    python3 \
-    python3-pip \
-    pipx \
-    && rm -rf /var/lib/apt/lists/*
-RUN userdel -r ubuntu 2>/dev/null; useradd -m -u 1000 -s /bin/bash user
-USER user
-WORKDIR /workspace
-ENV PATH="/home/user/.local/bin:${PATH}"
-`
+func imageTag(agent string) string {
+	switch agent {
+	case "opencode":
+		return "aienv/sandbox:latest-opencode"
+	case "claude-code":
+		return "aienv/sandbox:latest-claude"
+	default:
+		return "aienv/sandbox:latest"
+	}
+}
 
 func Check() error {
 	cmd := exec.Command("docker", "info")
@@ -40,7 +31,12 @@ func Check() error {
 	return nil
 }
 
-func Build() error {
+func Build(agent string) error {
+	dfData, err := readDockerfile(agent)
+	if err != nil {
+		return err
+	}
+
 	tmpDir, err := os.MkdirTemp("", "aienv-docker-*")
 	if err != nil {
 		return fmt.Errorf("creating temp dir: %w", err)
@@ -48,12 +44,13 @@ func Build() error {
 	defer os.RemoveAll(tmpDir)
 
 	dfPath := filepath.Join(tmpDir, "Dockerfile")
-	if err := os.WriteFile(dfPath, []byte(dockerfile), 0644); err != nil {
+	if err := os.WriteFile(dfPath, dfData, 0644); err != nil {
 		return fmt.Errorf("writing Dockerfile: %w", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "Building Docker sandbox image (%s)...\n", imageTag)
-	cmd := exec.Command("docker", "build", "-t", imageTag, tmpDir)
+	tag := imageTag(agent)
+	fmt.Fprintf(os.Stderr, "Building Docker sandbox image (%s)...\n", tag)
+	cmd := exec.Command("docker", "build", "-t", tag, tmpDir)
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -63,12 +60,22 @@ func Build() error {
 	return nil
 }
 
-func ensureImage() error {
-	cmd := exec.Command("docker", "image", "inspect", imageTag)
+func BuildAll() error {
+	for _, agent := range []string{"opencode", "claude-code"} {
+		if err := Build(agent); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ensureImage(agent string) error {
+	tag := imageTag(agent)
+	cmd := exec.Command("docker", "image", "inspect", tag)
 	if cmd.Run() == nil {
 		return nil
 	}
-	return Build()
+	return Build(agent)
 }
 
 func Run(e *env.Env, cwd string) error {
@@ -76,7 +83,7 @@ func Run(e *env.Env, cwd string) error {
 		return err
 	}
 
-	if err := ensureImage(); err != nil {
+	if err := ensureImage(e.Agent); err != nil {
 		return err
 	}
 
@@ -86,18 +93,47 @@ func Run(e *env.Env, cwd string) error {
 
 	args = append(args, "-v", fmt.Sprintf("%s:/workspace", cwd))
 
-	ocJSON := config.OpenCodeJSON(e.Name)
-	args = append(args, "-v", fmt.Sprintf("%s:/ai-env/opencode.json:ro", ocJSON))
+	switch e.Agent {
+	case "opencode":
+		ocJSON := config.OpenCodeJSON(e.Name)
+		args = append(args, "-v", fmt.Sprintf("%s:/ai-env/opencode.json:ro", ocJSON))
 
-	for _, skill := range e.Skills {
-		for _, prefix := range []string{".agents/skills", ".config/opencode/skills"} {
-			dir := filepath.Join(os.Getenv("HOME"), prefix, skill.Name)
-			if info, err := os.Stat(dir); err == nil && info.IsDir() {
-				containerPath := fmt.Sprintf("/home/user/%s/%s", prefix, skill.Name)
-				args = append(args, "-v", fmt.Sprintf("%s:%s:ro", dir, containerPath))
-				break
+		for _, skill := range e.Skills {
+			for _, prefix := range []string{".agents/skills", ".config/opencode/skills"} {
+				dir := filepath.Join(os.Getenv("HOME"), prefix, skill.Name)
+				if info, err := os.Stat(dir); err == nil && info.IsDir() {
+					containerPath := fmt.Sprintf("/home/user/%s/%s", prefix, skill.Name)
+					args = append(args, "-v", fmt.Sprintf("%s:%s:ro", dir, containerPath))
+					break
+				}
 			}
 		}
+
+		args = append(args, "-e", "OPENCODE_CONFIG=/ai-env/opencode.json")
+
+	case "claude-code":
+		mcpCfg := filepath.Join(config.EnvDir(e.Name), "mcp-config.json")
+		args = append(args, "-v", fmt.Sprintf("%s:/ai-env/mcp-config.json:ro", mcpCfg))
+
+		claudeMD := filepath.Join(config.EnvDir(e.Name), "CLAUDE.md")
+		args = append(args, "-v", fmt.Sprintf("%s:/ai-env/CLAUDE.md:ro", claudeMD))
+
+		claudeCfgDir := filepath.Join(config.EnvDir(e.Name), "claude-config")
+		if info, err := os.Stat(claudeCfgDir); err == nil && info.IsDir() {
+			args = append(args, "-v", fmt.Sprintf("%s:/home/user/.claude:ro", claudeCfgDir))
+		}
+
+		for _, skill := range e.Skills {
+			dir := filepath.Join(os.Getenv("HOME"), ".claude", "skills", skill.Name)
+			if info, err := os.Stat(dir); err == nil && info.IsDir() {
+				args = append(args, "-v", fmt.Sprintf("%s:/home/user/.claude/skills/%s:ro", dir, skill.Name))
+			}
+		}
+
+		args = append(args, "-e", "OPENCODE_CONFIG=/ai-env/mcp-config.json")
+
+	default:
+		return fmt.Errorf("unsupported agent %q for Docker sandbox", e.Agent)
 	}
 
 	sshDir := filepath.Join(os.Getenv("HOME"), ".ssh")
@@ -111,7 +147,6 @@ func Run(e *env.Env, cwd string) error {
 		}
 	}
 
-	args = append(args, "-e", "OPENCODE_CONFIG=/ai-env/opencode.json")
 	args = append(args, "-e", "HOME=/home/user")
 	args = append(args, "--network", "host")
 
@@ -126,13 +161,33 @@ func Run(e *env.Env, cwd string) error {
 		}
 	}
 
-	openCodePath, err := exec.LookPath("opencode")
-	if err != nil {
-		return fmt.Errorf("opencode not found in PATH — install opencode first: %w", err)
-	}
-	args = append(args, "-v", fmt.Sprintf("%s:/usr/local/bin/opencode:ro", openCodePath))
+	switch e.Agent {
+	case "opencode":
+		args = append(args, imageTag(e.Agent), "opencode")
+	case "claude-code":
+		claudeArgs := []string{"claude"}
+		claudeArgs = append(claudeArgs, "--mcp-config", "/ai-env/mcp-config.json")
+		claudeArgs = append(claudeArgs, "--append-system-prompt-file", "/ai-env/CLAUDE.md")
 
-	args = append(args, imageTag, "opencode")
+		for _, rule := range e.Rules {
+			containerPath := rule.Path
+			if !filepath.IsAbs(rule.Path) {
+				containerPath = filepath.Join("/workspace", rule.Path)
+			} else {
+				if _, err := os.Stat(rule.Path); err == nil {
+					args = append(args, "-v", fmt.Sprintf("%s:%s:ro", rule.Path, rule.Path))
+				}
+			}
+			claudeArgs = append(claudeArgs, "--append-system-prompt-file", containerPath)
+		}
+
+		claudeArgs = append(claudeArgs, "--strict-mcp-config")
+		if e.Model != "" {
+			claudeArgs = append(claudeArgs, "--model", e.Model)
+		}
+		args = append(args, imageTag(e.Agent))
+		args = append(args, claudeArgs...)
+	}
 
 	cmd := exec.Command("docker", args...)
 	cmd.Stdin = os.Stdin

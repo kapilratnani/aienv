@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/kapilratnani/aienv/internal/agents"
 	"github.com/kapilratnani/aienv/internal/config"
 	"github.com/kapilratnani/aienv/internal/docker"
 	"github.com/kapilratnani/aienv/internal/env"
-	"github.com/kapilratnani/aienv/internal/opencode"
 	"github.com/kapilratnani/aienv/internal/skills"
 	"github.com/spf13/cobra"
 )
@@ -38,10 +38,10 @@ Used by the 'aienv' shell function with 'eval':
 			e.Model = modelOverride
 		}
 
-		missing := skills.VerifyAll(e.Skills)
+		missing := skills.VerifyAll(e.Skills, e.Agent)
 		if len(missing) > 0 {
 			fmt.Fprintf(os.Stderr, "Installing missing skills...\n")
-			if err := skills.InstallAll(missing); err != nil {
+			if err := skills.InstallAll(missing, e.Agent); err != nil {
 				return fmt.Errorf("installing skills: %w", err)
 			}
 		}
@@ -65,34 +65,28 @@ Used by the 'aienv' shell function with 'eval':
 			return fmt.Errorf("getting cwd: %w", err)
 		}
 
-		cfg, err := opencode.Generate(e, cwd)
+		ag, err := agents.Get(e.Agent)
 		if err != nil {
-			return fmt.Errorf("generating opencode config: %w", err)
+			return err
 		}
 
-		ocPath := config.OpenCodeJSON(name)
-		if err := os.WriteFile(ocPath, cfg, 0644); err != nil {
-			return fmt.Errorf("writing opencode config: %w", err)
+		files, err := ag.GenerateFiles(e, cwd)
+		if err != nil {
+			return fmt.Errorf("generating agent config: %w", err)
+		}
+
+		for _, f := range files {
+			path := config.AgentConfigPath(name, f.Path)
+			if err := os.WriteFile(path, f.Content, 0644); err != nil {
+				return fmt.Errorf("writing %s: %w", f.Path, err)
+			}
 		}
 
 		if dockerMode {
 			return docker.Run(e, cwd)
 		}
 
-		absPath, _ := filepath.Abs(ocPath)
-
-		shell := filepath.Base(os.Getenv("SHELL"))
-
-		switch shell {
-		case "fish":
-			fmt.Printf("set -x OPENCODE_CONFIG %s;\n", absPath)
-			fmt.Println("opencode")
-			fmt.Printf("set -e OPENCODE_CONFIG;\n")
-		default:
-			fmt.Printf("export OPENCODE_CONFIG=%s\n", absPath)
-			fmt.Println("opencode")
-			fmt.Println("unset OPENCODE_CONFIG")
-		}
+		fmt.Print(ag.ActivateCommand(config.EnvDir(name), e))
 
 		return nil
 	},

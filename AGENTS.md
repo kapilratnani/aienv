@@ -34,4 +34,4 @@ Go CLI tool for managing task-specific AI coding environments.
 ## Key Design Docs
 
 Design research and decisions are in an Obsidian vault at:
-`/home/kapil-ratnani/gdrive/obsidian/Personal/Ideas/Research Notes/AI Env/`
+`~/gdrive/obsidian/Personal/Ideas/Research Notes/AI Env/`

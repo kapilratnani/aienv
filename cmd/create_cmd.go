@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kapilratnani/aienv/internal/agents"
 	"github.com/kapilratnani/aienv/internal/assets"
 	"github.com/kapilratnani/aienv/internal/config"
 	"github.com/kapilratnani/aienv/internal/env"
-	"github.com/kapilratnani/aienv/internal/opencode"
 	"github.com/kapilratnani/aienv/internal/registry"
 	"github.com/kapilratnani/aienv/internal/skills"
 	"github.com/spf13/cobra"
@@ -36,10 +36,12 @@ var createCmd = &cobra.Command{
 		}
 
 		e := &env.Env{
-			Name:  name,
-			Agent: "opencode",
+			Name: name,
 		}
 
+		if err := promptAgent(e); err != nil {
+			return err
+		}
 		if err := promptDescription(e); err != nil {
 			return err
 		}
@@ -66,21 +68,34 @@ var createCmd = &cobra.Command{
 			return fmt.Errorf("saving environment: %w", err)
 		}
 
-		missing := skills.VerifyAll(e.Skills)
+		missing := skills.VerifyAll(e.Skills, e.Agent)
 		if len(missing) > 0 {
 			fmt.Println("Installing skills...")
-			if err := skills.InstallAll(missing); err != nil {
+			if err := skills.InstallAll(missing, e.Agent); err != nil {
 				return err
 			}
 		}
 
-		cfg, err := opencode.Generate(e, ".")
+		ag, err := agents.Get(e.Agent)
 		if err != nil {
-			return fmt.Errorf("generating opencode config: %w", err)
+			return err
 		}
-		ocPath := config.OpenCodeJSON(name)
-		if err := os.WriteFile(ocPath, cfg, 0644); err != nil {
-			return fmt.Errorf("writing opencode config: %w", err)
+
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("getting cwd: %w", err)
+		}
+
+		files, err := ag.GenerateFiles(e, cwd)
+		if err != nil {
+			return fmt.Errorf("generating agent config: %w", err)
+		}
+
+		for _, f := range files {
+			path := config.AgentConfigPath(name, f.Path)
+			if err := os.WriteFile(path, f.Content, 0644); err != nil {
+				return fmt.Errorf("writing %s: %w", f.Path, err)
+			}
 		}
 
 		fmt.Printf("\n✓ Created environment %q\n", name)
@@ -88,6 +103,27 @@ var createCmd = &cobra.Command{
 		fmt.Printf("  Run:     aienv %s\n", name)
 		return nil
 	},
+}
+
+func promptAgent(e *env.Env) error {
+	fmt.Print("Agent (opencode/claude-code) [default: opencode]: ")
+	input, err := readLine()
+	if err != nil {
+		return err
+	}
+	input = strings.TrimSpace(input)
+	if input == "" {
+		e.Agent = "opencode"
+	} else {
+		switch input {
+		case "opencode", "claude-code":
+			e.Agent = input
+		default:
+			fmt.Printf("  Unknown agent %q, defaulting to opencode\n", input)
+			e.Agent = "opencode"
+		}
+	}
+	return nil
 }
 
 func promptDescription(e *env.Env) error {

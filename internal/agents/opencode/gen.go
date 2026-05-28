@@ -3,10 +3,20 @@ package opencode
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 
+	"github.com/kapilratnani/aienv/internal/agents"
 	"github.com/kapilratnani/aienv/internal/env"
 )
+
+func init() {
+	agents.Register(&agent{})
+}
+
+type agent struct{}
+
+func (a *agent) Name() string { return "opencode" }
 
 type opencodeConfig struct {
 	Model        string              `json:"model,omitempty"`
@@ -27,7 +37,7 @@ type mcpEntry struct {
 	Headers map[string]string `json:"headers,omitempty"`
 }
 
-func Generate(e *env.Env, cwd string) ([]byte, error) {
+func (a *agent) GenerateFiles(e *env.Env, cwd string) ([]agents.AgentFile, error) {
 	cfg := opencodeConfig{
 		MCP:          make(map[string]mcpEntry, len(e.MCPServers)),
 		Instructions: make([]string, 0, len(e.Rules)),
@@ -66,5 +76,19 @@ func Generate(e *env.Env, cwd string) ([]byte, error) {
 		return nil, fmt.Errorf("marshalling opencode config: %w", err)
 	}
 
-	return data, nil
+	return []agents.AgentFile{
+		{Path: "opencode.json", Content: data},
+	}, nil
+}
+
+func (a *agent) ActivateCommand(envDir string, e *env.Env) string {
+	absPath := filepath.Join(envDir, "opencode.json")
+
+	shell := filepath.Base(os.Getenv("SHELL"))
+	switch shell {
+	case "fish":
+		return fmt.Sprintf("set -x OPENCODE_CONFIG %s;\nopencode\nset -e OPENCODE_CONFIG;\n", absPath)
+	default:
+		return fmt.Sprintf("export OPENCODE_CONFIG=%s\nopencode\nunset OPENCODE_CONFIG\n", absPath)
+	}
 }

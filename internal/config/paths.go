@@ -26,6 +26,10 @@ func OpenCodeJSON(name string) string {
 	return filepath.Join(EnvDir(name), "opencode.json")
 }
 
+func AgentConfigPath(name, filename string) string {
+	return filepath.Join(EnvDir(name), filename)
+}
+
 func IsValidName(name string) error {
 	if !validName.MatchString(name) {
 		return fmt.Errorf("invalid name %q: must be lowercase alphanumeric with hyphens (e.g. backend-api)", name)

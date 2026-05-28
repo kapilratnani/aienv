@@ -52,8 +52,10 @@ func (e *Env) Validate() error {
 	if e.Agent == "" {
 		return fmt.Errorf("agent is required")
 	}
-	if e.Agent != "opencode" {
-		return fmt.Errorf("unsupported agent %q (only opencode is supported)", e.Agent)
+	switch e.Agent {
+	case "opencode", "claude-code":
+		return nil
+	default:
+		return fmt.Errorf("unsupported agent %q", e.Agent)
 	}
-	return nil
 }

@@ -13,10 +13,16 @@ var dockerCmd = &cobra.Command{
 }
 
 var dockerBuildCmd = &cobra.Command{
-	Use:   "build",
-	Short: "Build the Docker sandbox image",
+	Use:   "build [opencode|claude-code]",
+	Short: "Build the Docker sandbox image for an agent",
+	Long: `Build the Docker sandbox image. If an agent name is provided,
+only that agent's image is built. Otherwise, both opencode and claude-code images are built.`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return docker.Build()
+		if len(args) == 1 {
+			return docker.Build(args[0])
+		}
+		return docker.BuildAll()
 	},
 }
 

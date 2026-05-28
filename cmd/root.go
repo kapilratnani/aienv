@@ -26,7 +26,7 @@ needed for a specific task, similar to Python's virtualenv.
   aienv edit frontend-design      Edit environment config
   aienv delete frontend-design    Delete an environment
   aienv init                       Install shell function
-  aienv docker build               Build Docker sandbox image
+  aienv docker build [agent]       Build Docker sandbox image (or specify agent)
   aienv docker check               Verify Docker availability`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
