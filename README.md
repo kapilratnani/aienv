@@ -115,6 +115,27 @@ Skills scoped per agent, isolation via `CLAUDE_CONFIG_DIR` for Claude Code.
 
 ---
 
+## 💬 Starter Prompts
+
+Inject a default starter prompt into every session to guide agent behavior.
+
+Set a persistent prompt in `ai-env.yaml`:
+
+```yaml
+name: aienv
+prompt: Use caveman and tdd skills
+```
+
+Override at runtime with `--prompt`:
+
+```bash
+aienv --prompt "Be thorough and write tests first" my-env
+```
+
+The prompt text is written to `starter-prompt.md` and prepended to the agent's instructions array on every activation. Great for enforcing workflows, personas, token efficiency, or coding standards — for example, the aienv environment itself uses `prompt: Use caveman and tdd skills` to keep every session lean and test-driven.
+
+---
+
 ## 🐳 Isolated Docker Execution
 
 Run coding agents in disposable containers.
@@ -188,9 +209,10 @@ Each environment loads its own:
 ## OpenCode
 
 ```yaml
-name: backend-api
+name: aienv
 agent: opencode
-model: claude-sonnet-4-5
+model: opencode/deepseek-v4-flash-free
+prompt: Use caveman and tdd skills
 
 mcp:
   github:
@@ -198,9 +220,12 @@ mcp:
     command: ["npx", "-y", "@modelcontextprotocol/server-github"]
 
 skills:
-  - name: api-design
+  - name: tdd
     source: registry
-    package: vercel-labs/agent-skills
+    package: mattpocock/skills
+  - name: caveman
+    source: local
+    path: ./skills/caveman
 
 rules:
   - path: ./AGENTS.md
@@ -212,6 +237,7 @@ rules:
 name: frontend-design
 agent: claude-code
 model: claude-sonnet-4-5
+prompt: Follow the design system and use shadcn components
 
 mcp:
   shadcn:
@@ -324,6 +350,8 @@ Search directly from:
 | `aienv create <name>` | Create environment |
 | `aienv <name>` | Activate environment |
 | `aienv --docker <name>` | Run in Docker sandbox |
+| `aienv --prompt <text> <name>` | Activate with custom starter prompt |
+| `aienv --model <model> <name>` | Activate with model override |
 | `aienv list` | List environments |
 | `aienv show <name>` | Show config |
 | `aienv edit <name>` | Edit environment |
@@ -350,6 +378,7 @@ Infrastructure needs:
 # 🛣 Roadmap
 
 - [x] Claude Code support
+- [x] Starter prompts (`prompt` field + `--prompt` flag)
 - [ ] Cursor / Windsurf / Copilot integration
 - [ ] Remote execution
 - [ ] Permission policies
