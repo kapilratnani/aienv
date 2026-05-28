@@ -54,7 +54,7 @@ This quickly becomes:
 aienv backend-api
 ```
 
-👉 Opens OpenCode with:
+👉 Opens the configured agent (OpenCode or Claude Code) with:
 - project MCPs
 - coding skills
 - rules
@@ -98,6 +98,23 @@ No more global AI configuration chaos.
 
 ---
 
+## 🎯 Multi-Agent Support
+
+Choose your agent per environment — OpenCode or Claude Code.
+
+```bash
+aienv create my-env
+# → Select agent: opencode / claude-code
+```
+
+Each agent gets correctly-formatted config:
+- **OpenCode**: `opencode.json` with `mcp.<name>.command` array
+- **Claude Code**: `mcp-config.json` with `mcpServers.<name>.command` string + `args` array
+
+Skills scoped per agent, isolation via `CLAUDE_CONFIG_DIR` for Claude Code.
+
+---
+
 ## 🐳 Isolated Docker Execution
 
 Run coding agents in disposable containers.
@@ -109,7 +126,7 @@ Perfect for:
 - experimenting safely
 
 Everything runs inside the sandbox:
-- OpenCode
+- OpenCode / Claude Code
 - MCP servers
 - agent shell commands
 
@@ -166,7 +183,9 @@ Each environment loads its own:
 
 ---
 
-# 🏗 Example Environment
+# 🏗 Example Environments
+
+## OpenCode
 
 ```yaml
 name: backend-api
@@ -185,6 +204,27 @@ skills:
 
 rules:
   - path: ./AGENTS.md
+```
+
+## Claude Code
+
+```yaml
+name: frontend-design
+agent: claude-code
+model: claude-sonnet-4-5
+
+mcp:
+  shadcn:
+    type: local
+    command: ["npx", "-y", "@shadcn/mcp-server"]
+
+skills:
+  - name: frontend-design
+    source: registry
+    package: anthropics/skills
+
+rules:
+  - path: ./docs/design-tokens.md
 ```
 
 ---
@@ -213,6 +253,7 @@ aienv create backend-api
 ```
 
 Interactive setup includes:
+- agent selection (OpenCode / Claude Code)
 - curated MCP selection
 - skill selection
 - official registry search
@@ -245,7 +286,7 @@ The sandbox provides:
 - safer agent execution
 
 ### Runs inside container
-✅ OpenCode  
+✅ OpenCode / Claude Code  
 ✅ MCP servers  
 ✅ shell commands  
 
@@ -308,8 +349,8 @@ Infrastructure needs:
 
 # 🛣 Roadmap
 
-- [ ] Claude Code support
-- [ ] Cursor integration
+- [x] Claude Code support
+- [ ] Cursor / Windsurf / Copilot integration
 - [ ] Remote execution
 - [ ] Permission policies
 - [ ] Environment sharing
