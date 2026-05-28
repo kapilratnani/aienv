@@ -48,6 +48,18 @@ Used by the 'aienv' shell function with 'eval':
 
 		checkMCPEnvVars(e)
 
+		promptText := promptOverride
+		if promptText == "" {
+			promptText = e.Prompt
+		}
+		if promptText != "" {
+			promptPath := filepath.Join(config.EnvDir(name), "starter-prompt.md")
+			if err := os.WriteFile(promptPath, []byte(promptText+"\n"), 0644); err != nil {
+				return fmt.Errorf("writing starter prompt: %w", err)
+			}
+			e.Rules = append([]env.Rule{{Path: promptPath}}, e.Rules...)
+		}
+
 		cwd, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("getting cwd: %w", err)

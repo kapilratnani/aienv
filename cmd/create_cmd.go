@@ -55,6 +55,9 @@ var createCmd = &cobra.Command{
 		if err := promptRules(e); err != nil {
 			return err
 		}
+		if err := promptPrompt(e); err != nil {
+			return err
+		}
 		if err := promptConfirm(e); err != nil {
 			return err
 		}
@@ -585,6 +588,16 @@ func promptRules(e *env.Env) error {
 	return nil
 }
 
+func promptPrompt(e *env.Env) error {
+	fmt.Print("Default starter prompt (optional, e.g. 'Use caveman mode'): ")
+	input, err := readLine()
+	if err != nil {
+		return err
+	}
+	e.Prompt = strings.TrimSpace(input)
+	return nil
+}
+
 func promptConfirm(e *env.Env) error {
 	fmt.Println("\n--- Summary ---")
 	fmt.Printf("  Name:        %s\n", e.Name)
@@ -594,6 +607,9 @@ func promptConfirm(e *env.Env) error {
 	}
 	if e.Description != "" {
 		fmt.Printf("  Description: %s\n", e.Description)
+	}
+	if e.Prompt != "" {
+		fmt.Printf("  Prompt:      %s\n", e.Prompt)
 	}
 	mcpNames := sortedMCPKeys(e.MCPServers)
 	fmt.Printf("  MCPs:        %s\n", joinOrNone(mcpNames))

@@ -9,6 +9,7 @@ import (
 
 var modelOverride string
 var dockerMode bool
+var promptOverride string
 
 var rootCmd = &cobra.Command{
 	Use:   "aienv",
@@ -36,6 +37,7 @@ needed for a specific task, similar to Python's virtualenv.
 func Execute() {
 	rootCmd.PersistentFlags().StringVar(&modelOverride, "model", "", "Override model for the environment")
 	rootCmd.PersistentFlags().BoolVar(&dockerMode, "docker", false, "Run agent in Docker sandbox")
+	rootCmd.PersistentFlags().StringVar(&promptOverride, "prompt", "", "Starter prompt for the session (overrides env default)")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
