@@ -14,4 +14,6 @@ RUN userdel -r ubuntu 2>/dev/null; useradd -m -u 1000 -s /bin/bash user
 USER user
 WORKDIR /workspace
 ENV PATH="/home/user/.local/bin:${PATH}"
-RUN npm install -g @opencode/cli
+USER root
+RUN npm i -g opencode-ai
+USER user
