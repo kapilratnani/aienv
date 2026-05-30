@@ -151,6 +151,8 @@ Everything runs inside the sandbox:
 - MCP servers
 - agent shell commands
 
+> **Note:** In Docker mode, only the skills declared in your environment are accessible inside the container (filesystem isolation). Outside Docker, skills are functionally restricted by permissions — they appear in the agent's skills dialog but won't activate by trigger phrases unless explicitly allowed. This is a known behavior of the agent's permission system; your environment-scoped skills still work correctly when invoked.
+
 ---
 
 ## 🔌 MCP Management
@@ -377,22 +379,35 @@ Infrastructure needs:
 
 # 🛣 Roadmap
 
+- [x] Create flow with curated & registry search
+- [x] Docker sandbox isolation
+- [x] Starter prompts
 - [x] Claude Code support
-- [x] Starter prompts (`prompt` field + `--prompt` flag)
-- [ ] Cursor / Windsurf / Copilot integration
-- [ ] Remote execution
-- [ ] Permission policies
+- [ ] Docker auth (credential transfer)
+- [ ] Repo-local `.aienv.yaml` + `aienv up`
+- [ ] Permission policies & trust
+- [ ] Agent expansion framework
+- [ ] Default environment directory
+- [ ] Custom MCP/skill repositories
 - [ ] Environment sharing
-- [ ] CI integration
-- [ ] Multi-agent orchestration
 
 ---
 
 # 🤝 Contributing
 
-PRs, ideas, and feedback welcome.
+Contributions welcome in these areas:
 
-If you build interesting environments or workflows, open a discussion 🚀
+### MCPs
+Add curated MCPs to `curated/mcps.yaml` following the existing schema. Include `env[]` metadata for any required environment variables so users are prompted during `aienv create`.
+
+### Skills
+Add curated skills to `curated/skills.yaml`. Skills should link to their installed path and include a `description` that helps the create-flow search match user intent.
+
+### New Agents
+Agent support is pluggable via `internal/agents/agent.go`. Implement the `Agent` interface (`Name()`, `GenerateFiles()`, `ActivateCommand()`) and register via blank import in `agent_import.go`. See `internal/agents/opencode/gen.go` or `internal/agents/claude/gen.go` for reference.
+
+### General
+PRs, issues, and ideas welcome. Open a discussion for larger changes before submitting.
 
 ---
 
