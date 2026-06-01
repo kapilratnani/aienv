@@ -17,3 +17,4 @@ ENV PATH="/home/user/.local/bin:${PATH}"
 USER root
 RUN npm i -g opencode-ai
 USER user
+RUN mkdir -p /home/user/.local/state 

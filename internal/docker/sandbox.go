@@ -93,6 +93,21 @@ func Run(e *env.Env, cwd string) error {
 
 	args = append(args, "-v", fmt.Sprintf("%s:/workspace", cwd))
 
+	opencodeConfigDir := filepath.Join(os.Getenv("HOME"), ".config", "opencode")
+	if info, err := os.Stat(opencodeConfigDir); err == nil && info.IsDir() {
+		args = append(args, "-v", fmt.Sprintf("%s:/home/user/.config/opencode:ro", opencodeConfigDir))
+	}
+
+	opencodeLocalDir := filepath.Join(os.Getenv("HOME"), ".local", "share", "opencode")
+	if info, err := os.Stat(opencodeLocalDir); err == nil && info.IsDir() {
+		args = append(args, "--mount", fmt.Sprintf("type=bind,source=%s,target=/home/user/.local/share/opencode,bind-propagation=private", opencodeLocalDir))
+	}
+
+	gitCfg := filepath.Join(os.Getenv("HOME"), ".gitconfig")
+	if _, err := os.Stat(gitCfg); err == nil {
+		args = append(args, "-v", fmt.Sprintf("%s:/home/user/.gitconfig:ro", gitCfg))
+	}
+
 	switch e.Agent {
 	case "opencode":
 		ocJSON := config.OpenCodeJSON(e.Name)

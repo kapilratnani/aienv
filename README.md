@@ -151,7 +151,7 @@ Everything runs inside the sandbox:
 - MCP servers
 - agent shell commands
 
-> **Note:** In Docker mode, only the skills declared in your environment are accessible inside the container (filesystem isolation). Outside Docker, skills are functionally restricted by permissions — they appear in the agent's skills dialog but won't activate by trigger phrases unless explicitly allowed. This is a known behavior of the agent's permission system; your environment-scoped skills still work correctly when invoked.
+> **Note:** For OpenCode in Docker mode, only the skills declared in your environment are accessible inside the container (filesystem isolation). Outside Docker, skills are functionally restricted by permissions — they appear in the agent's skills dialog but won't activate by trigger phrases unless explicitly allowed. This is a known behavior of the agent's permission system; your environment-scoped skills still work correctly when invoked.
 
 ---
 
