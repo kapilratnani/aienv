@@ -65,12 +65,22 @@ Used by the 'aienv' shell function with 'eval':
 			return fmt.Errorf("getting cwd: %w", err)
 		}
 
+		workdir := cwd
+		if e.Workdir != "" {
+			wd := env.ExpandTilde(e.Workdir)
+			if info, err := os.Stat(wd); err == nil && info.IsDir() {
+				workdir = wd
+			} else {
+				fmt.Fprintf(os.Stderr, "  Warning: workdir %q not found, using current directory\n", e.Workdir)
+			}
+		}
+
 		ag, err := agents.Get(e.Agent)
 		if err != nil {
 			return err
 		}
 
-		files, err := ag.GenerateFiles(e, cwd)
+		files, err := ag.GenerateFiles(e, workdir)
 		if err != nil {
 			return fmt.Errorf("generating agent config: %w", err)
 		}
@@ -83,10 +93,14 @@ Used by the 'aienv' shell function with 'eval':
 		}
 
 		if dockerMode {
-			return docker.Run(e, cwd)
+			return docker.Run(e, workdir)
 		}
 
-		fmt.Print(ag.ActivateCommand(config.EnvDir(name), e))
+		activateCmd := ag.ActivateCommand(config.EnvDir(name), e)
+		if workdir != cwd {
+			activateCmd = fmt.Sprintf("cd %s\n%s", workdir, activateCmd)
+		}
+		fmt.Print(activateCmd)
 
 		return nil
 	},

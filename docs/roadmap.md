@@ -26,10 +26,16 @@
 - Extract a base/default agent with overridable paths, file templates, and activation command patterns
 - Deferred: actual per-agent implementations (Cursor, GitHub Copilot, Windsurf, Codex) until framework is stable
 
-## Priority 5: Default Environment Directory
+## Priority 5: Default Environment Directory (DONE)
 
 - On activation, change directory to a configured workspace path
-- Could be a `workdir` field in the env schema, or default to CWD at activate time
+- `workdir` field in the env schema (absolute path, stored in YAML)
+- Create flow prompts for workdir with tilde/relative path expansion and directory validation
+- Activation resolves workdir, passes it to GenerateFiles for rule path resolution
+- Non-Docker: prepends `cd <workdir>` to activation command (eval picks it up)
+- Docker: mounts workdir as `/workspace` (instead of CWD)
+- `show` and create summary display the workdir setting
+- `ExpandTilde()` helper in `internal/env/env.go` for `~` expansion at both create and activation time
 
 ## Priority 6: Custom MCP/Skill Repositories
 

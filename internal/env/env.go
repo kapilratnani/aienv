@@ -1,11 +1,17 @@
 package env
 
+import (
+	"os"
+	"path/filepath"
+)
+
 type Env struct {
 	Name        string              `yaml:"name"`
 	Agent       string              `yaml:"agent"`
 	Model       string              `yaml:"model,omitempty"`
 	Description string              `yaml:"description,omitempty"`
 	Prompt      string              `yaml:"prompt,omitempty"`
+	Workdir     string              `yaml:"workdir,omitempty"`
 	MCPServers  map[string]MCPServer `yaml:"mcp"`
 	Skills      []Skill             `yaml:"skills"`
 	Rules       []Rule              `yaml:"rules"`
@@ -28,4 +34,16 @@ type Skill struct {
 
 type Rule struct {
 	Path string `yaml:"path"`
+}
+
+func ExpandTilde(path string) string {
+	if path == "~" {
+		home, _ := os.UserHomeDir()
+		return home
+	}
+	if len(path) > 1 && path[0] == '~' && path[1] == '/' {
+		home, _ := os.UserHomeDir()
+		return filepath.Join(home, path[2:])
+	}
+	return path
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -58,6 +59,9 @@ var createCmd = &cobra.Command{
 			return err
 		}
 		if err := promptPrompt(e); err != nil {
+			return err
+		}
+		if err := promptWorkdir(e); err != nil {
 			return err
 		}
 		if err := promptConfirm(e); err != nil {
@@ -634,6 +638,38 @@ func promptPrompt(e *env.Env) error {
 	return nil
 }
 
+func promptWorkdir(e *env.Env) error {
+	fmt.Print("Default working directory (absolute path, or '.' for current): ")
+	input, err := readLine()
+	if err != nil {
+		return err
+	}
+	input = strings.TrimSpace(input)
+
+	if input == "" {
+		fmt.Println("  Note: When no workdir is set, the environment will activate")
+		fmt.Println("  in whatever directory you run 'aienv <name>' from.")
+		return nil
+	}
+
+	expanded := env.ExpandTilde(input)
+	absPath, err := filepath.Abs(expanded)
+	if err != nil {
+		return fmt.Errorf("resolving path: %w", err)
+	}
+
+	info, err := os.Stat(absPath)
+	if err != nil {
+		return fmt.Errorf("directory %q does not exist", absPath)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%q is not a directory", absPath)
+	}
+
+	e.Workdir = absPath
+	return nil
+}
+
 func promptConfirm(e *env.Env) error {
 	fmt.Println("\n--- Summary ---")
 	fmt.Printf("  Name:        %s\n", e.Name)
@@ -646,6 +682,11 @@ func promptConfirm(e *env.Env) error {
 	}
 	if e.Prompt != "" {
 		fmt.Printf("  Prompt:      %s\n", e.Prompt)
+	}
+	if e.Workdir != "" {
+		fmt.Printf("  Workdir:     %s\n", e.Workdir)
+	} else {
+		fmt.Printf("  Workdir:     (current directory at activation time)\n")
 	}
 	mcpNames := sortedMCPKeys(e.MCPServers)
 	fmt.Printf("  MCPs:        %s\n", joinOrNone(mcpNames))

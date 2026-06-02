@@ -48,6 +48,9 @@ var showCmd = &cobra.Command{
 		if e.Description != "" {
 			fmt.Printf("Description: %s\n", e.Description)
 		}
+		if e.Workdir != "" {
+			fmt.Printf("Workdir:     %s\n", e.Workdir)
+		}
 		fmt.Printf("MCPs:        %s\n", joinOrNone(mcpNames))
 		fmt.Printf("Skills:      %s\n", joinOrNone(skillNames))
 		fmt.Printf("Rules:       %s\n", joinOrNone(rules))

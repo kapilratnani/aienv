@@ -97,3 +97,23 @@
 - Removed `CLAUDE_CONFIG_DIR` export/unset — Claude uses global `~/.claude/`
 - Env-specific overrides come via CLI flags (`--mcp-config`, `--append-system-prompt-file`, `--model`)
 - Removed skill symlink logic — skills already installed globally by `npx skills add --agent claude`
+
+## Default Environment Directory
+
+**Problem**: Activation always stayed in the user's current directory. No way to configure a default workspace for an environment.
+
+**Solution**:
+- Added `workdir` field to `Env` struct (`yaml:"workdir,omitempty"`)
+- Create flow prompts: "Default working directory (absolute path, or '.' for current): "
+  - Empty → prints note about activation-time CWD behavior
+  - `~` or `~/...` → expanded via `ExpandTilde()` helper
+  - `.` or relative → converted to absolute via `filepath.Abs()`
+  - Validates directory exists with `os.Stat`
+- Activation (`cmd/activate_cmd.go`):
+  - Resolves workdir, expands `~`, validates directory exists (warns + fallback to CWD if missing)
+  - Passes resolved workdir to `GenerateFiles()` for correct rule path resolution
+  - Non-Docker: prepends `cd <workdir>\n` to the activation command output → shell `eval` executes the `cd` in the calling shell
+  - Docker: passes workdir to `docker.Run()` → mounts it as `/workspace` (container's `WORKDIR /workspace` inherited from Dockerfile)
+- `show` and create summary display workdir when set
+- `edit` works naturally — field is just another YAML key
+- `ExpandTilde(path)` helper in `internal/env/env.go` shared across create and activate
