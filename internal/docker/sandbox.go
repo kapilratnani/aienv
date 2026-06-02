@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/kapilratnani/aienv/internal/config"
@@ -81,6 +82,25 @@ func ensureImage(agent string) error {
 	return Build(agent)
 }
 
+func mountIsolatedVolume(hostDir, volName, imageTag string) error {
+	ec := exec.Command("docker", "volume", "create", volName)
+	if err := ec.Run(); err != nil {
+		return fmt.Errorf("creating volume: %w", err)
+	}
+
+	init := exec.Command("docker", "run", "--rm", "--user", "root",
+		"-v", volName+":/target",
+		"-v", hostDir+":/source:ro",
+		imageTag,
+		"sh", "-c", "cp -a /source/. /target/. && chown -R 1000:1000 /target")
+	if out, err := init.CombinedOutput(); err != nil {
+		exec.Command("docker", "volume", "rm", "-f", volName).Run()
+		return fmt.Errorf("initializing volume from host data: %w\n%s", err, out)
+	}
+
+	return nil
+}
+
 func Run(e *env.Env, cwd string) error {
 	if err := Check(); err != nil {
 		return err
@@ -122,21 +142,10 @@ func Run(e *env.Env, cwd string) error {
 	opencodeLocalDir := filepath.Join(os.Getenv("HOME"), ".local", "share", "opencode")
 	if info, err := os.Stat(opencodeLocalDir); err == nil && info.IsDir() {
 		volName := sessionID + "-share"
-		ec := exec.Command("docker", "volume", "create", volName)
-		if err := ec.Run(); err != nil {
-			return fmt.Errorf("creating volume: %w", err)
+		if err := mountIsolatedVolume(opencodeLocalDir, volName, imageTag(e.Agent)); err != nil {
+			return err
 		}
 		cleanupVolumes = append(cleanupVolumes, volName)
-
-		init := exec.Command("docker", "run", "--rm", "--user", "root",
-			"-v", volName+":/target",
-			"-v", opencodeLocalDir+":/source:ro",
-			imageTag(e.Agent),
-			"sh", "-c", "cp -a /source/. /target/. && chown -R 1000:1000 /target")
-		if out, err := init.CombinedOutput(); err != nil {
-			return fmt.Errorf("initializing volume from host data: %w\n%s", err, out)
-		}
-
 		args = append(args, "-v", fmt.Sprintf("%s:/home/user/.local/share/opencode", volName))
 	}
 
@@ -172,7 +181,17 @@ func Run(e *env.Env, cwd string) error {
 
 		claudeHome := filepath.Join(os.Getenv("HOME"), ".claude")
 		if info, err := os.Stat(claudeHome); err == nil && info.IsDir() {
-			args = append(args, "-v", fmt.Sprintf("%s:/home/user/.claude:ro", claudeHome))
+			volName := sessionID + "-claude"
+			if err := mountIsolatedVolume(claudeHome, volName, imageTag(e.Agent)); err != nil {
+				return err
+			}
+			cleanupVolumes = append(cleanupVolumes, volName)
+			args = append(args, "-v", fmt.Sprintf("%s:/home/user/.claude", volName))
+		}
+
+		claudeJSON := filepath.Join(os.Getenv("HOME"), ".claude.json")
+		if _, err := os.Stat(claudeJSON); err == nil {
+			args = append(args, "-v", fmt.Sprintf("%s:/home/user/.claude.json.ro:ro", claudeJSON))
 		}
 
 	default:
@@ -224,7 +243,9 @@ func Run(e *env.Env, cwd string) error {
 			claudeArgs = append(claudeArgs, "--model", e.Model)
 		}
 		args = append(args, imageTag(e.Agent))
-		args = append(args, claudeArgs...)
+		args = append(args, "sh", "-c",
+			fmt.Sprintf("cp /home/user/.claude.json.ro /home/user/.claude.json 2>/dev/null; exec claude %s",
+				strings.Join(claudeArgs[1:], " ")))
 	}
 
 	cmd := exec.Command("docker", args...)
