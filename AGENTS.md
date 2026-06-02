@@ -31,7 +31,7 @@ Go CLI tool for managing task-specific AI coding environments.
 - Commands in `cmd/` are thin — logic lives in `internal/`
 - Persistent flags on root (`--model`, `--docker`, `--prompt`) passed to activate
 
-## Key Design Docs
+## Docs
 
-Design research and decisions are in an Obsidian vault at:
-`~/gdrive/obsidian/Personal/Ideas/Research Notes/AI Env/`
+- `docs/` — Implementation details, roadmap, architecture, use cases
+- Obsidian vault: `~/gdrive/obsidian/Personal/Ideas/Research Notes/AI Env/`
