@@ -2,9 +2,12 @@ package docker
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"github.com/kapilratnani/aienv/internal/config"
 	"github.com/kapilratnani/aienv/internal/env"
@@ -87,6 +90,24 @@ func Run(e *env.Env, cwd string) error {
 		return err
 	}
 
+	sessionID := fmt.Sprintf("aienv-%s-%d", e.Name, rand.Uint64())
+	var cleanupVolumes []string
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		for range sigCh {
+		}
+	}()
+
+	defer func() {
+		signal.Stop(sigCh)
+		close(sigCh)
+		for _, v := range cleanupVolumes {
+			exec.Command("docker", "volume", "rm", "-f", v).Run()
+		}
+	}()
+
 	args := []string{
 		"run", "--rm", "-it",
 	}
@@ -100,7 +121,23 @@ func Run(e *env.Env, cwd string) error {
 
 	opencodeLocalDir := filepath.Join(os.Getenv("HOME"), ".local", "share", "opencode")
 	if info, err := os.Stat(opencodeLocalDir); err == nil && info.IsDir() {
-		args = append(args, "--mount", fmt.Sprintf("type=bind,source=%s,target=/home/user/.local/share/opencode,bind-propagation=private", opencodeLocalDir))
+		volName := sessionID + "-share"
+		ec := exec.Command("docker", "volume", "create", volName)
+		if err := ec.Run(); err != nil {
+			return fmt.Errorf("creating volume: %w", err)
+		}
+		cleanupVolumes = append(cleanupVolumes, volName)
+
+		init := exec.Command("docker", "run", "--rm", "--user", "root",
+			"-v", volName+":/target",
+			"-v", opencodeLocalDir+":/source:ro",
+			imageTag(e.Agent),
+			"sh", "-c", "cp -a /source/. /target/. && chown -R 1000:1000 /target")
+		if out, err := init.CombinedOutput(); err != nil {
+			return fmt.Errorf("initializing volume from host data: %w\n%s", err, out)
+		}
+
+		args = append(args, "-v", fmt.Sprintf("%s:/home/user/.local/share/opencode", volName))
 	}
 
 	gitCfg := filepath.Join(os.Getenv("HOME"), ".gitconfig")
@@ -133,27 +170,13 @@ func Run(e *env.Env, cwd string) error {
 		claudeMD := filepath.Join(config.EnvDir(e.Name), "CLAUDE.md")
 		args = append(args, "-v", fmt.Sprintf("%s:/ai-env/CLAUDE.md:ro", claudeMD))
 
-		claudeCfgDir := filepath.Join(config.EnvDir(e.Name), "claude-config")
-		if info, err := os.Stat(claudeCfgDir); err == nil && info.IsDir() {
-			args = append(args, "-v", fmt.Sprintf("%s:/home/user/.claude:ro", claudeCfgDir))
+		claudeHome := filepath.Join(os.Getenv("HOME"), ".claude")
+		if info, err := os.Stat(claudeHome); err == nil && info.IsDir() {
+			args = append(args, "-v", fmt.Sprintf("%s:/home/user/.claude:ro", claudeHome))
 		}
-
-		for _, skill := range e.Skills {
-			dir := filepath.Join(os.Getenv("HOME"), ".claude", "skills", skill.Name)
-			if info, err := os.Stat(dir); err == nil && info.IsDir() {
-				args = append(args, "-v", fmt.Sprintf("%s:/home/user/.claude/skills/%s:ro", dir, skill.Name))
-			}
-		}
-
-		args = append(args, "-e", "OPENCODE_CONFIG=/ai-env/mcp-config.json")
 
 	default:
 		return fmt.Errorf("unsupported agent %q for Docker sandbox", e.Agent)
-	}
-
-	sshDir := filepath.Join(os.Getenv("HOME"), ".ssh")
-	if info, err := os.Stat(sshDir); err == nil && info.IsDir() {
-		args = append(args, "-v", fmt.Sprintf("%s:/home/user/.ssh:ro", sshDir))
 	}
 
 	for _, key := range []string{"TERM", "COLORTERM", "LANG", "LC_ALL", "LC_CTYPE"} {

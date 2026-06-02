@@ -67,8 +67,6 @@ func (a *agent) GenerateFiles(e *env.Env, cwd string) ([]agents.AgentFile, error
 	}
 	files = append(files, agents.AgentFile{Path: "mcp-config.json", Content: data})
 
-	claudeDir := filepath.Join(envDir(e.Name), "claude-config")
-
 	var promptLines []string
 
 	if e.Prompt != "" {
@@ -88,42 +86,7 @@ func (a *agent) GenerateFiles(e *env.Env, cwd string) ([]agents.AgentFile, error
 		})
 	}
 
-	skillDir := filepath.Join(claudeDir, "skills")
-	for _, sk := range e.Skills {
-		src := findSkillDir(sk.Name)
-		if src == "" {
-			continue
-		}
-		dst := filepath.Join(skillDir, sk.Name)
-		if _, err := os.Stat(dst); os.IsNotExist(err) {
-			os.MkdirAll(filepath.Dir(dst), 0755)
-			os.Symlink(src, dst)
-		}
-	}
-
 	return files, nil
-}
-
-func envDir(name string) string {
-	return filepath.Join(os.Getenv("HOME"), ".ai-envs", name)
-}
-
-func findSkillDir(name string) string {
-	home, _ := os.UserHomeDir()
-	paths := []string{
-		filepath.Join(home, ".claude", "skills"),
-		filepath.Join(".claude", "skills"),
-	}
-	for _, base := range paths {
-		p := filepath.Join(base, name)
-		if info, err := os.Stat(p); err == nil && info.IsDir() {
-			if _, err := os.Stat(filepath.Join(p, "SKILL.md")); err == nil {
-				abs, _ := filepath.Abs(p)
-				return abs
-			}
-		}
-	}
-	return ""
 }
 
 func (a *agent) ActivateCommand(envDir string, e *env.Env) string {
@@ -147,7 +110,5 @@ func (a *agent) ActivateCommand(envDir string, e *env.Env) string {
 		args = append(args, "--model", e.Model)
 	}
 
-	claudeConfigDir := filepath.Join(envDir, "claude-config")
-
-	return fmt.Sprintf("export CLAUDE_CONFIG_DIR=%s\n%s\nunset CLAUDE_CONFIG_DIR\n", claudeConfigDir, strings.Join(args, " "))
+	return strings.Join(args, " ") + "\n"
 }
