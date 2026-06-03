@@ -25,7 +25,7 @@ aienv --docker backend-api   # activate (Docker sandbox)
 
 ## Permissions (Experimental)
 
-Network and filesystem permission enforcement is not yet fully supported — the schema and configuration wizard are in place, but runtime enforcement is incomplete.
+Network and filesystem permission enforcement works to some extent — the schema and configuration wizard are in place, but runtime enforcement works for opencode.
 
 ```yaml
 permissions:
