@@ -52,11 +52,19 @@ Embedded via `//go:embed *.Dockerfile` in `internal/docker/`:
 
 Image tag: `aienv/sandbox:latest-<agent>`
 
+## Network Policy Proxy
+
+When `permissions.network` is configured, an embedded Go HTTP/HTTPS proxy enforces the domain allowlist/denylist:
+
+1. Proxy binds to `0.0.0.0` (all host interfaces) on a random port
+2. Container resolves the host via `--add-host host.docker.internal:host-gateway` (`host.docker.internal`)
+3. Container receives `HTTP_PROXY`/`HTTPS_PROXY` pointing to `host.docker.internal:<port>`
+4. Container uses default Docker bridge network (no `--network host`)
+
 ## Environment Passthrough
 
 `TERM`, `COLORTERM`, `LANG`, `LC_ALL`, `LC_CTYPE`, `OPENCODE_CONFIG`, `HOME`, MCP-specific vars (`GITHUB_TOKEN`, etc.)
 
 ## Known Issues
 
-- Network uses `--network host` — proper network isolation deferred
 - `~/.ssh/` not mounted — auth via `gh` CLI + token env vars

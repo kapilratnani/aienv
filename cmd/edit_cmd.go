@@ -5,7 +5,9 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/kapilratnani/aienv/internal/agents"
 	"github.com/kapilratnani/aienv/internal/config"
+	"github.com/kapilratnani/aienv/internal/env"
 	"github.com/spf13/cobra"
 )
 
@@ -13,7 +15,8 @@ var editCmd = &cobra.Command{
 	Use:   "edit <name>",
 	Short: "Open environment configuration in editor",
 	Long: `Opens the environment's ai-env.yaml in your default editor ($EDITOR).
-If EDITOR is not set, falls back to vi.`,
+If EDITOR is not set, falls back to vi. After editing, agent config is
+regenerated and trust cache is invalidated.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
@@ -41,8 +44,38 @@ If EDITOR is not set, falls back to vi.`,
 			return fmt.Errorf("running editor: %w", err)
 		}
 
+		e, err := env.Load(name)
+		if err != nil {
+			return fmt.Errorf("re-loading environment after edit: %w", err)
+		}
+
+		ag, err := agents.Get(e.Agent)
+		if err != nil {
+			return err
+		}
+
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("getting cwd: %w", err)
+		}
+
+		files, err := ag.GenerateFiles(e, cwd)
+		if err != nil {
+			return fmt.Errorf("regenerating agent config: %w", err)
+		}
+
+		for _, f := range files {
+			path := config.AgentConfigPath(name, f.Path)
+			if err := os.WriteFile(path, f.Content, 0644); err != nil {
+				return fmt.Errorf("writing %s: %w", f.Path, err)
+			}
+		}
+
+		if err := config.InvalidateTrustCache(name); err != nil {
+			fmt.Fprintf(os.Stderr, "  Warning: failed to invalidate trust cache: %v\n", err)
+		}
+
 		fmt.Printf("Environment %q updated.\n", name)
-		fmt.Printf("  Run 'aienv %s' to use the updated config.\n", name)
 		return nil
 	},
 }

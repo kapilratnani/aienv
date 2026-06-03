@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	_ "github.com/kapilratnani/aienv/internal/log"
 	"github.com/spf13/cobra"
 )
 

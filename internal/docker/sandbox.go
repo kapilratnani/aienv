@@ -179,6 +179,13 @@ func Run(e *env.Env, cwd string) error {
 		claudeMD := filepath.Join(config.EnvDir(e.Name), "CLAUDE.md")
 		args = append(args, "-v", fmt.Sprintf("%s:/ai-env/CLAUDE.md:ro", claudeMD))
 
+		if e.Permissions != nil {
+			claudeSettings := filepath.Join(config.EnvDir(e.Name), "claude-settings.json")
+			if _, err := os.Stat(claudeSettings); err == nil {
+				args = append(args, "-v", fmt.Sprintf("%s:/ai-env/claude-settings.json:ro", claudeSettings))
+			}
+		}
+
 		claudeHome := filepath.Join(os.Getenv("HOME"), ".claude")
 		if info, err := os.Stat(claudeHome); err == nil && info.IsDir() {
 			volName := sessionID + "-claude"
@@ -205,7 +212,35 @@ func Run(e *env.Env, cwd string) error {
 	}
 
 	args = append(args, "-e", "HOME=/home/user")
-	args = append(args, "--network", "host")
+
+	if e.Permissions != nil && e.Permissions.Network != nil {
+		allowlist := e.Permissions.Network.Allow
+		denylist := e.Permissions.Network.Deny
+
+		providerHosts := env.DetectProviderEndpoints(e.Agent)
+		allowlist = append(allowlist, providerHosts...)
+		unique := map[string]bool{}
+		deduped := make([]string, 0, len(allowlist))
+		for _, h := range allowlist {
+			if !unique[h] {
+				unique[h] = true
+				deduped = append(deduped, h)
+			}
+		}
+		allowlist = deduped
+
+		p, port, err := RunProxy(allowlist, denylist, "0.0.0.0")
+		if err != nil {
+			return fmt.Errorf("starting network proxy: %w", err)
+		}
+		defer p.Close()
+
+		proxyURL := fmt.Sprintf("http://host.docker.internal:%d", port)
+		args = append(args, "--add-host", "host.docker.internal:host-gateway")
+		args = append(args, "-e", "HTTP_PROXY="+proxyURL)
+		args = append(args, "-e", "HTTPS_PROXY="+proxyURL)
+		args = append(args, "-e", "NO_PROXY=localhost,127.0.0.1")
+	}
 
 	for _, srv := range e.MCPServers {
 		for _, val := range srv.Env {
@@ -225,6 +260,10 @@ func Run(e *env.Env, cwd string) error {
 		claudeArgs := []string{"claude"}
 		claudeArgs = append(claudeArgs, "--mcp-config", "/ai-env/mcp-config.json")
 		claudeArgs = append(claudeArgs, "--append-system-prompt-file", "/ai-env/CLAUDE.md")
+
+		if e.Permissions != nil {
+			claudeArgs = append(claudeArgs, "--settings", "/ai-env/claude-settings.json")
+		}
 
 		for _, rule := range e.Rules {
 			containerPath := rule.Path

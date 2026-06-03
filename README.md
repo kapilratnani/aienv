@@ -23,6 +23,28 @@ aienv backend-api            # activate (local)
 aienv --docker backend-api   # activate (Docker sandbox)
 ```
 
+## Permissions (Experimental)
+
+Network and filesystem permission enforcement is not yet fully supported — the schema and configuration wizard are in place, but runtime enforcement is incomplete.
+
+```yaml
+permissions:
+  filesystem:
+    read:
+      "*": "allow"
+    edit:
+      "*": "ask"
+  bash:
+    "*": "ask"
+  network:
+    allow: ["api.github.com"]
+    deny: ["*"]
+```
+
+Existing features: `aienv permissions <name>` wizard, Docker network proxy (enforces allow/deny), OpenCode config translation for `filesystem.read`/`edit` and `bash` patterns.
+
+Planned: Docker-level filesystem isolation, trust-system review prompt, Claude Code settings generation testing.
+
 ## Contributing
 
 ### MCPs
@@ -46,15 +68,15 @@ PRs, issues, and ideas welcome. Open a discussion for larger changes before subm
 - [x] Config inheritance & Docker auth
 - [x] Docker write isolation (session-unique volumes)
 - [x] Claude Code config inheritance
+- [x] Default environment directory
 - [ ] Repo-local `.aienv.yaml` + `aienv up`
-- [ ] Permission policies & trust
+- [ ] Permission policies & trust (test in progress on OpenCode)
 - [ ] Agent expansion framework (Cursor, Copilot, etc.)
-- [ ] Default environment directory
 - [ ] Custom MCP/skill repositories
 - [ ] Environment sharing & team features
 
 ---
 
-Detailed docs: [architecture](docs/architecture.md), [completed features](docs/completed.md), [docker sandbox](docs/docker.md), [use cases](docs/use-cases.md), [roadmap](docs/roadmap.md)
+Detailed docs: [architecture](docs/architecture.md), [completed features](docs/completed.md), [docker sandbox](docs/docker.md), [trust & permissions](docs/trust-permissions.md), [use cases](docs/use-cases.md), [roadmap](docs/roadmap.md)
 
 MIT License

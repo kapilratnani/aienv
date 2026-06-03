@@ -23,6 +23,16 @@ type claudeConfig struct {
 	MCPServers map[string]mcpEntry `json:"mcpServers"`
 }
 
+type claudeSettings struct {
+	Permissions *claudePermissions `json:"permissions,omitempty"`
+}
+
+type claudePermissions struct {
+	Allow []string `json:"allow,omitempty"`
+	Ask   []string `json:"ask,omitempty"`
+	Deny  []string `json:"deny,omitempty"`
+}
+
 type mcpEntry struct {
 	Command string            `json:"command"`
 	Args    []string          `json:"args,omitempty"`
@@ -86,7 +96,51 @@ func (a *agent) GenerateFiles(e *env.Env, cwd string) ([]agents.AgentFile, error
 		})
 	}
 
+	if e.Permissions != nil {
+		settingsData, err := json.MarshalIndent(buildClaudeSettings(e.Permissions), "", "  ")
+		if err != nil {
+			return nil, fmt.Errorf("marshalling claude settings: %w", err)
+		}
+		files = append(files, agents.AgentFile{
+			Path:    "claude-settings.json",
+			Content: settingsData,
+		})
+	}
+
 	return files, nil
+}
+
+func buildClaudeSettings(perms *env.Permissions) claudeSettings {
+	if perms == nil {
+		return claudeSettings{}
+	}
+	cp := claudePermissions{}
+	addTo := func(action string, entry string) {
+		switch action {
+		case "allow":
+			cp.Allow = append(cp.Allow, entry)
+		case "ask":
+			cp.Ask = append(cp.Ask, entry)
+		case "deny":
+			cp.Deny = append(cp.Deny, entry)
+		}
+	}
+	if perms.Filesystem != nil {
+		for pattern, action := range perms.Filesystem.Read {
+			addTo(action, "Read("+pattern+")")
+		}
+		for pattern, action := range perms.Filesystem.Edit {
+			addTo(action, "Edit("+pattern+")")
+		}
+	}
+	for pattern, action := range perms.Bash {
+		addTo(action, "Bash("+pattern+")")
+	}
+	settings := claudeSettings{}
+	if len(cp.Allow) > 0 || len(cp.Ask) > 0 || len(cp.Deny) > 0 {
+		settings.Permissions = &cp
+	}
+	return settings
 }
 
 func (a *agent) ActivateCommand(envDir string, e *env.Env) string {
@@ -94,6 +148,10 @@ func (a *agent) ActivateCommand(envDir string, e *env.Env) string {
 	args = append(args, "claude")
 	args = append(args, "--mcp-config", filepath.Join(envDir, "mcp-config.json"))
 	args = append(args, "--append-system-prompt-file", filepath.Join(envDir, "CLAUDE.md"))
+
+	if e.Permissions != nil {
+		args = append(args, "--settings", filepath.Join(envDir, "claude-settings.json"))
+	}
 
 	for _, rule := range e.Rules {
 		path := rule.Path

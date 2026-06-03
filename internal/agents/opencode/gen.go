@@ -3,6 +3,7 @@ package opencode
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 
@@ -45,7 +46,7 @@ func (a *agent) GenerateFiles(e *env.Env, cwd string) ([]agents.AgentFile, error
 		cfg["instructions"] = buildInstructions(e.Rules, cwd)
 	}
 
-	if perm := mergePermission(globalCfg, e.Skills); len(perm) > 0 {
+	if perm := mergePermission(globalCfg, e.Skills, e.Permissions); len(perm) > 0 {
 		cfg["permission"] = perm
 	}
 
@@ -124,8 +125,8 @@ func buildInstructions(rules []env.Rule, cwd string) []string {
 	return instructions
 }
 
-func mergePermission(globalCfg map[string]any, skills []env.Skill) map[string]any {
-	if len(skills) == 0 {
+func mergePermission(globalCfg map[string]any, skills []env.Skill, perms *env.Permissions) map[string]any {
+	if len(skills) == 0 && perms == nil {
 		return nil
 	}
 
@@ -134,9 +135,7 @@ func mergePermission(globalCfg map[string]any, skills []env.Skill) map[string]an
 		perm = map[string]any{}
 	} else {
 		cp := make(map[string]any, len(perm))
-		for k, v := range perm {
-			cp[k] = v
-		}
+		maps.Copy(cp, perm)
 		perm = cp
 	}
 
@@ -145,6 +144,61 @@ func mergePermission(globalCfg map[string]any, skills []env.Skill) map[string]an
 		skillPerm[sk.Name] = "allow"
 	}
 	perm["skill"] = skillPerm
+
+	if perms != nil && perms.Filesystem != nil {
+		if len(perms.Filesystem.Read) > 0 {
+			existing, _ := perm["read"].(map[string]any)
+			if existing == nil {
+				merged := make(map[string]any, len(perms.Filesystem.Read))
+				for k, v := range perms.Filesystem.Read {
+					merged[k] = v
+				}
+				perm["read"] = merged
+			} else {
+				merged := make(map[string]any, len(existing)+len(perms.Filesystem.Read))
+				maps.Copy(merged, existing)
+				for k, v := range perms.Filesystem.Read {
+					merged[k] = v
+				}
+				perm["read"] = merged
+			}
+		}
+		if len(perms.Filesystem.Edit) > 0 {
+			existing, _ := perm["edit"].(map[string]any)
+			if existing == nil {
+				merged := make(map[string]any, len(perms.Filesystem.Edit))
+				for k, v := range perms.Filesystem.Edit {
+					merged[k] = v
+				}
+				perm["edit"] = merged
+			} else {
+				merged := make(map[string]any, len(existing)+len(perms.Filesystem.Edit))
+				maps.Copy(merged, existing)
+				for k, v := range perms.Filesystem.Edit {
+					merged[k] = v
+				}
+				perm["edit"] = merged
+			}
+		}
+	}
+
+	if perms != nil && len(perms.Bash) > 0 {
+		existing, _ := perm["bash"].(map[string]any)
+		if existing == nil {
+			merged := make(map[string]any, len(perms.Bash))
+			for k, v := range perms.Bash {
+				merged[k] = v
+			}
+			perm["bash"] = merged
+		} else {
+			merged := make(map[string]any, len(existing)+len(perms.Bash))
+			maps.Copy(merged, existing)
+			for k, v := range perms.Bash {
+				merged[k] = v
+			}
+			perm["bash"] = merged
+		}
+	}
 
 	return perm
 }

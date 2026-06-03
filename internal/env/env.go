@@ -15,6 +15,7 @@ type Env struct {
 	MCPServers  map[string]MCPServer `yaml:"mcp"`
 	Skills      []Skill             `yaml:"skills"`
 	Rules       []Rule              `yaml:"rules"`
+	Permissions *Permissions        `yaml:"permissions,omitempty"`
 }
 
 type MCPServer struct {
@@ -34,6 +35,22 @@ type Skill struct {
 
 type Rule struct {
 	Path string `yaml:"path"`
+}
+
+type Permissions struct {
+	Filesystem *FilesystemPermissions `yaml:"filesystem,omitempty"`
+	Bash       map[string]string      `yaml:"bash,omitempty"`
+	Network    *NetworkPermissions    `yaml:"network,omitempty"`
+}
+
+type FilesystemPermissions struct {
+	Read map[string]string `yaml:"read,omitempty"`
+	Edit map[string]string `yaml:"edit,omitempty"`
+}
+
+type NetworkPermissions struct {
+	Allow []string `yaml:"allow,omitempty"`
+	Deny  []string `yaml:"deny,omitempty"`
 }
 
 func ExpandTilde(path string) string {
