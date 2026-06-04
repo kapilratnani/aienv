@@ -1,7 +1,6 @@
 # aienv
 
-> Reproducible, isolated environments for AI coding agents.
-> Think `virtualenv` for AI agents — but with MCPs, skills, and rules.
+> The permission and isolation layer for AI coding agents.
 
 AI coding setups become chaotic fast. Different projects need different MCP servers,
 prompts, skills, model providers, API credentials, and tooling. Most developers
