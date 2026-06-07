@@ -1,5 +1,18 @@
 # Roadmap
 
+## Priority 1: Desktop UI
+
+- Wails-based desktop app at `cmd/wails/` — separate binary, reuses `internal/` packages
+- Vue 3 + TypeScript + Vite frontend with xterm.js embedded terminal
+- Full replacement of CLI for common tasks: env CRUD, activation, permissions, audit
+- Phase 1: Shell & Env CRUD (dashboard, create wizard, detail/edit views)
+- Phase 2: Permissions & Trust (visual glob editor, provider endpoints, OS keychain)
+- Phase 3: Embedded Terminal (Terminal interface, creack/pty, xterm.js, Docker session launch)
+- Phase 4: Audit Viewer (network JSONL, cost extraction, session list/detail)
+- Separate `go.mod` for Wails — no dependency bloat on CLI binary
+- Linux + macOS only (Windows deferred to ConPTY)
+- Design doc: `docs/desktop-ui.md` — 26 grill-session decisions logged
+
 ## Priority 2: Repo-Local `.aienv.yaml` + `aienv up`
 
 - `.aienv.yaml` as canonical repo-level env declaration (checked into VCS)
