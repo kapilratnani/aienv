@@ -50,20 +50,29 @@
 - `show` and create summary display the workdir setting
 - `ExpandTilde()` helper in `internal/env/env.go` for `~` expansion at both create and activation time
 
-## Priority 6: Custom MCP/Skill Repositories
+## Priority 6: Custom Docker Images
+
+- `dockerfile` top-level field in env YAML for custom project-specific dependencies
+- Two-stage build: user's Dockerfile as base layer, aienv installs agent on top
+- Hash-based image tagging (`aienv/env/<name>:<hash>`) for automatic change detection
+- Build context is env YAML's directory (portable with repo-local `.aienv.yaml`)
+- `aienv docker build <envname>` for force rebuild
+- Design doc: `docs/custom-docker-images.md` — 6 grill-session decisions logged
+
+## Priority 7: Custom MCP/Skill Repositories
 
 - Support additional registries beyond skills.sh and modelcontextprotocol.io
 - Enterprise/internal repo support via configurable registry list
 - Multi-registry orchestration (merge results from all configured repos)
 
-## Priority 7: Sharing & Team Features
+## Priority 8: Sharing & Team Features
 
 - `aienv install <source>` — install environments from GitHub repos or URLs
 - `aienv publish` — export environment to GitHub
 - `aienv update` — pull latest version of a shared environment
 - GitHub-based discovery: search for `.aienv.yaml` files
 
-## Priority 8: Docker Image Size
+## Priority 9: Docker Image Size
 
 - Multi-stage Dockerfiles, distroless base, smaller image
 - Not a blocker for local development
