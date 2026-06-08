@@ -1,6 +1,7 @@
 package env
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -18,13 +19,7 @@ func TestDetectOpenCodeEndpoints(t *testing.T) {
 func TestDetectClaudeEndpoints(t *testing.T) {
 	hosts := DetectProviderEndpoints("claude-code")
 	t.Logf("Detected Claude provider hosts: %v", hosts)
-	found := false
-	for _, h := range hosts {
-		if h == "api.anthropic.com" {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(hosts, "api.anthropic.com")
 	if !found {
 		t.Error("claude-code should always include api.anthropic.com")
 	}

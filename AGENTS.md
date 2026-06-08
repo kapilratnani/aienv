@@ -4,12 +4,25 @@ Go CLI tool for managing task-specific AI coding environments.
 
 ## Build
 
-- `go build ./...`
-- `go install .`
+- `make build` — build binary
+- `make install` — `go install .`
 
 ## Test
 
-- `go test ./...`
+- `make test` — run all tests
+- `make test-verbose` — verbose output
+- `make test-race` — with race detector
+- `make coverage` — test + coverage report
+- `make coverage-html` — open HTML coverage
+
+## Quality
+
+- `make vet` / `make lint` — `go vet`
+- `make fmt` — format all Go files
+
+## Misc
+
+- `make clean` — remove binary and coverage artifacts
 
 ## Project Structure
 
