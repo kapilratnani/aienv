@@ -265,18 +265,18 @@ func autoDetectNetwork(net *env.NetworkPermissions, e *env.Env) {
 }
 
 func extractHost(rawURL string) string {
-	idx := strings.Index(rawURL, "://")
-	if idx < 0 {
+	before, after, found := strings.Cut(rawURL, "://")
+	if !found {
 		return ""
 	}
-	rest := rawURL[idx+3:]
-	slash := strings.Index(rest, "/")
-	if slash >= 0 {
-		rest = rest[:slash]
+	rest := after
+	before, after, found = strings.Cut(rest, "/")
+	if found {
+		rest = before
 	}
-	colon := strings.Index(rest, ":")
-	if colon >= 0 {
-		rest = rest[:colon]
+	before, after, found = strings.Cut(rest, ":")
+	if found {
+		rest = before
 	}
 	return rest
 }

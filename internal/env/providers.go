@@ -138,8 +138,8 @@ func parseProviderList() []string {
 		if !strings.Contains(line, "●") {
 			continue
 		}
-		idx := strings.Index(line, "●")
-		rest := line[idx+len("●"):]
+		_, after, _ := strings.Cut(line, "●")
+		rest := after
 		rest = strings.TrimSpace(rest)
 		if rest == "" {
 			continue
