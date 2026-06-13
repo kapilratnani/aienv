@@ -1,7 +1,13 @@
 # Docker-Only Migration
 
 Last updated: 2026-06-13
-Status: Complete
+Status: Complete (Superseded by Black Box Agents ADR)
+
+> **Note**: This document describes the migration from shell-based execution to Docker-only
+> execution at the agent-interface level (per-agent `DockerConfig()` methods). It was
+> subsequently superseded by the [black-box refactor](adr/0005-black-box-agents.md), which
+> removed all per-agent Go code entirely. Agents are now defined purely through YAML with no
+> Go per-agent interface. This doc is kept as a historical record of that architectural step.
 
 ## Quick Resume
 

@@ -2,77 +2,83 @@
 
 > The permission and isolation layer for AI coding agents.
 
-AI coding setups become chaotic fast. Different projects need different MCP servers,
-prompts, skills, model providers, API credentials, and tooling. Most developers
-manage this with copied config files, global installs, and README instructions —
-unreproducible, hard to share, and insecure.
-
-`aienv` fixes this with project-scoped MCPs and skills, reproducible YAML configs,
-multi-agent support (OpenCode, Claude Code), and disposable Docker sandboxes.
+AI coding setups become chaotic fast. Different projects need different tools,
+credentials, and configs. `aienv` fixes this with reproducible Docker sandboxes
+that isolate agents from your host, enforce network permissions, and provide
+audit trails. Agents are **black boxes** — you bring your own agent config,
+aienv provides the sandbox.
 
 ## Quick Start
 
 ```bash
 go install github.com/kapilratnani/aienv@latest
 
-aienv create backend-api    # interactive: agent, MCPs, skills
-aienv backend-api            # activate (Docker sandbox)
+aienv create my-env     # interactive: install, command, mounts, permissions
+aienv my-env             # build image + launch sandbox
 ```
 
-## Permissions (Experimental)
+## CLI
 
-Network and filesystem permission enforcement works to some extent — the schema and configuration wizard are in place, but runtime enforcement works for opencode.
+| Command | Function |
+|---------|----------|
+| `aienv create <name>` | Interactive environment creation |
+| `aienv <name>` / `aienv up <name>` | Build image if needed, launch sandbox |
+| `aienv list` | List all environments |
+| `aienv show <name>` | Show environment details |
+| `aienv edit <name>` | Edit env YAML in $EDITOR |
+| `aienv build <name>` | Force rebuild Docker image |
+| `aienv shell <name>` | Interactive shell in sandbox (debugging) |
+| `aienv delete <name>` | Remove env + image + audit data |
+| `aienv clean` | Remove orphaned images, audit dirs, trust cache |
+
+## Schema
 
 ```yaml
+env:
+  name: my-env
+  description: Backend API development
+
+agent:
+  install:
+    - npm install -g opencode-ai
+  command: [opencode]
+  mounts:
+    - source: ~/project
+      target: /workspace
+    - source: ~/.config/opencode
+      target: /home/agent/.config/opencode
+      writable: true
+
+deps:
+  packages: [golang, python3]
+  custom: [go install foo/bar]
+
 permissions:
-  filesystem:
-    read:
-      "*": "allow"
-    edit:
-      "*": "ask"
-  bash:
-    "*": "ask"
   network:
-    allow: ["api.github.com"]
+    allow: [api.github.com, api.anthropic.com]
     deny: ["*"]
+
+audit:
+  persist: true
+  capture: [network]
 ```
 
-Existing features: `aienv permissions <name>` wizard, Docker network proxy (enforces allow/deny), OpenCode config translation for `filesystem.read`/`edit` and `bash` patterns.
+## Features
 
-Planned: Docker-level filesystem isolation, trust-system review prompt, Claude Code settings generation testing.
+- **Black box agents** — any agent binary, defined entirely in YAML. No per-agent Go code.
+- **Build-time images** — auto-generated from env YAML, cached by content hash.
+- **Network proxy** — HTTP/HTTPS proxy with allow/deny/learn modes, runs on host.
+- **Audit logging** — JSONL session records, network requests logged per activation.
+- **Trust system** — first activation shows mounts + network rules, cached by env hash.
+- **Session isolation** — each `aienv up` spawns a separate container with unique session ID.
+- **XDG-compliant** — config at `~/.local/share/aienv/`, trust cache at `~/.config/aienv/trust/`.
 
 ## Contributing
 
-### MCPs
-Add curated MCPs to `curated/mcps.yaml` following the existing schema. Include `env[]` metadata for any required environment variables.
+PRs, issues, and ideas welcome. Open a discussion for larger changes first.
 
-### Skills
-Add curated skills to `curated/skills.yaml` with a `description` that helps the create-flow search match user intent.
+See [architecture](docs/architecture.md), [roadmap](docs/roadmap.md), and [docs/](docs/) for details.
 
-### New Agents
-Agent support is pluggable via `internal/agents/agent.go`. Implement the `Agent` interface (`Name()`, `GenerateFiles()`, `DockerConfig()`) and register via blank import in `agent_import.go`.
+## License
 
-### General
-PRs, issues, and ideas welcome. Open a discussion for larger changes before submitting.
-
-## Roadmap
-
-- [x] Create flow with curated & registry search
-- [x] Docker sandbox isolation
-- [x] Starter prompts
-- [x] Claude Code support
-- [x] Config inheritance & Docker auth
-- [x] Docker write isolation (session-unique volumes)
-- [x] Claude Code config inheritance
-- [x] Default environment directory
-- [ ] Repo-local `.aienv.yaml` + `aienv up`
-- [ ] Permission policies & trust (test in progress on OpenCode)
-- [ ] Agent expansion framework (Cursor, Copilot, etc.)
-- [ ] Custom MCP/skill repositories
-- [ ] Environment sharing & team features
-
----
-
-Detailed docs: [architecture](docs/architecture.md), [completed features](docs/completed.md), [docker sandbox](docs/docker.md), [trust & permissions](docs/trust-permissions.md), [use cases](docs/use-cases.md), [roadmap](docs/roadmap.md)
-
-MIT License
+MIT

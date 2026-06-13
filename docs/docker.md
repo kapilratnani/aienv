@@ -1,70 +1,86 @@
-# Docker Sandbox
+# Docker Design
 
-## Overview
+Last updated: 2026-06-14
+Status: Current
 
-The Docker sandbox runs AI coding agents inside isolated containers, preventing agent writes from leaking to the host filesystem while preserving access to project source code and authentication.
+## Architecture
 
-## Volume Mounts
+- One Docker image per environment, tagged `aienv/env:<name>`
+- Dockerfile auto-generated from env YAML
+- Image cached by content hash of YAML
+- Container launched with writable bind mounts (no `--read-only`, no tmpfs)
 
-| Host Path | Container Path | Mode | Purpose |
-|---|---|---|---|
-| `$(pwd)` | `/workspace` | rw | Project source code |
-| `~/.ai-envs/<name>/` config | `/ai-env/` | ro | Agent config files |
-| `~/.config/opencode/` | `/home/user/.config/opencode/` | ro | Global config, providers, auth |
-| `~/.gitconfig` | `/home/user/.gitconfig` | ro | Git commit authorship |
+## Mount Model
 
-## Isolated Volumes (Session-Unique)
+Mounts defined in `env.yaml`:
 
-Uses Docker named volumes initialized from host data — writes go to `/var/lib/docker/volumes/`, never touch host.
-
-| Host Path | Volume Name | Container Path | Strategy |
-|---|---|---|---|
-| `~/.local/share/opencode/` | `aienv-<name>-<random>` | `/home/user/.local/share/opencode/` | volume-init |
-| `~/.claude/` | `aienv-claude-<name>-<random>` | `/home/user/.claude/` | volume-init |
-| `~/.claude.json` | — | `/home/user/.claude.json.ro` (ro) + cp to writable | overlay-init |
-
-### volume-init
-
-```go
-func mountIsolatedVolume(hostDir, volName, imageTag string) (string, error)
+```yaml
+agent:
+  mounts:
+    - source: ~/project
+      target: /workspace
+    - source: ~/.config/opencode
+      target: ~/.config/opencode
+      writable: true
 ```
 
-1. Create a Docker named volume
-2. Run ephemeral root container: `cp -a /source/. /target/. && chown -R 1000:1000 /target`
-3. Mount the volume at the target path
+- `~` in source is expanded to host home directory
+- `~` in target is resolved to `/home/agent/` (container agent user home)
+- Agent state directories (`~/.config`, `~/.local/share`, `~/.cache`) are writable bind mounts
+- All mounts use `-v type=bind` with either `:ro` or `:rw` suffix
+- Audit dir at `<envDir>/audit/<session-id>/` mounted at `/aienv/audit:rw`
 
-### overlay-init
+## Container Runtime
 
-For `~/.claude.json`: mount `:ro` at `.claude.json.ro`, then wrap the entrypoint with `sh -c "cp /home/user/.claude.json.ro /home/user/.claude.json && exec <agent> ..."`.
+```bash
+docker run \
+  -v host_src:/workspace \
+  -v host_agent_config:/home/agent/.config \
+  -v host_agent_local:/home/agent/.local/share \
+  -v host_agent_cache:/home/agent/.cache \
+  -v audit_dir:/aienv/audit:rw \
+  -e HTTP_PROXY=http://host.docker.internal:PORT \
+  -e HTTPS_PROXY=http://host.docker.internal:PORT \
+  -e HOME=/home/agent \
+  --add-host host.docker.internal:host-gateway \
+  -it --rm \
+  aienv/env:<name>
+```
 
-## Lifecycle
+- Agent runs with uid/gid 1000 (non-root inside container)
+- No `--read-only` — agent needs to write to its state directories
+- No `--tmpfs` — parent-path tmpfs at e.g. `/home/agent/` shadows subdirectory bind mounts
+- Default Docker bridge network (no `--network host`)
+- Proxy container networking via `host.docker.internal` DNS
 
-- **Container**: `docker run --rm -it` — auto-cleanup on exit
-- **Volumes**: `defer docker volume rm -f` on normal exit
-- **Signals**: `signal.Notify` catches SIGINT/SIGTERM before Go exits, ensuring defer runs
-- **Image**: Auto-built on first activate, rebuild via `aienv docker build`
+## Commands
 
-## Per-Agent Dockerfiles
+| Command | Behavior |
+|---------|----------|
+| `aienv up <name>` | Build image if missing, trust prompt (if needed), audit dir + session, proxy start, `docker run` |
+| `aienv build <name>` | Force `docker build` even if cached |
+| `aienv shell <name>` | `docker run` with same mounts/env but no proxy, no audit, no session — interactive bash |
 
-Embedded via `//go:embed *.Dockerfile` in `internal/docker/`:
-- `opencode.Dockerfile` — installs opencode via npm, includes gh CLI
-- `claude.Dockerfile` — installs claude-code via npm, includes gh CLI
+## Dockerfile
 
-Image tag: `aienv/sandbox:latest-<agent>`
+Generated from env YAML:
 
-## Network Policy Proxy
+```dockerfile
+FROM aienv/sandbox:latest
+USER root
+RUN apt-get update && apt-get install -y ... && rm -rf /var/lib/apt/lists/*
+RUN npm install -g ...
+ENV ... from agent.env
+COPY files/ /home/agent/
+USER agent
+WORKDIR /home/agent
+```
 
-When `permissions.network` is configured, an embedded Go HTTP/HTTPS proxy enforces the domain allowlist/denylist:
+Base image (`aienv/sandbox:latest`) includes: `git`, `curl`, `ca-certificates`, `gh`, `nodejs`, `npm`, `python3`, `python3-pip`, `pipx`.
 
-1. Proxy binds to `0.0.0.0` (all host interfaces) on a random port
-2. Container resolves the host via `--add-host host.docker.internal:host-gateway` (`host.docker.internal`)
-3. Container receives `HTTP_PROXY`/`HTTPS_PROXY` pointing to `host.docker.internal:<port>`
-4. Container uses default Docker bridge network (no `--network host`)
+## Audit Integration
 
-## Environment Passthrough
-
-`TERM`, `COLORTERM`, `LANG`, `LC_ALL`, `LC_CTYPE`, `OPENCODE_CONFIG`, `HOME`, MCP-specific vars (`GITHUB_TOKEN`, etc.)
-
-## Known Issues
-
-- `~/.ssh/` not mounted — auth via `gh` CLI + token env vars
+- Each activation creates `<envDir>/audit/<session-id>/`
+- Proxy writes `network.jsonl` with every request
+- `session.meta.json` written at start
+- Learn mode prints all observed hosts on proxy close

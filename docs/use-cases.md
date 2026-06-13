@@ -1,6 +1,12 @@
-# Use Cases
+# Use Cases — Historical
 
-16 real-world scenarios for `aienv`, each combining MCPs, skills, and rules for a specific task.
+The table below was written for the pre-v2 architecture where agents were defined
+as a combination of MCPs, skills, and rules. In the current black-box agent
+architecture, the user supplies the entire agent configuration — aienv provides
+only the sandbox, permissions, and audit layer.
+
+The scenarios remain valid as motivating examples for what aienv enables:
+isolated, reproducible environments for different coding tasks.
 
 | # | Scenario | MCPs | Skills | Rules |
 |---|---|---|---|---|
