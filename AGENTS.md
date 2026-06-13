@@ -1,6 +1,6 @@
 # aienv - AI Environment Manager
 
-Go CLI tool for managing task-specific AI coding environments.
+Go CLI tool for managing sandboxed, permissions-controlled AI coding environments.
 
 ## Build
 
@@ -26,28 +26,34 @@ Go CLI tool for managing task-specific AI coding environments.
 
 ## Project Structure
 
-- `cmd/` — cobra commands (create, activate, list, show, edit, delete, init, docker)
-- `internal/` — core logic
+- `cmd/` — cobra commands (create, up/activate, list, show, edit, delete, build, clean)
+- `internal/` — core logic (unexported packages)
+  - `audit/` — JSONL audit log schema and writer
+  - `config/` — XDG paths, hash computation, session ID generation
+  - `docker/` — Docker sandbox (build, run, proxy, trust prompts)
   - `env/` — Env struct, YAML load/save/validate
-  - `opencode/` — opencode.json generation
-  - `skills/` — verify and install skills
-  - `registry/` — MCP registry and skills.sh API clients
-  - `assets/` — curated MCP/skill YAML loader
-  - `docker/` — Docker sandbox container
-  - `shell/` — shell function install
-  - `config/` — path helpers
-- `curated/` — YAML-backed curated MCP and skill lists, bundled via embed.FS
 
 ## Conventions
 
 - Standard Go project layout with `internal/` for unexported packages
 - Commands in `cmd/` are thin — logic lives in `internal/`
-- Persistent flags on root (`--model`, `--docker`, `--prompt`) passed to activate
+- `config.TestDataDir` and `config.TestTrustDir` overrides for test isolation
+
+## CLI
+
+- `aienv create <name>` — interactive env creation
+- `aienv <name>` / `aienv up <name>` — build image if needed, launch sandbox
+- `aienv list` / `aienv show <name>` — inspect environments
+- `aienv edit <name>` — edit env YAML in $EDITOR
+- `aienv build <name>` — force rebuild Docker image
+- `aienv delete <name>` — remove env + image + audit data
+- `aienv clean` — remove orphaned images, audit dirs, trust cache
 
 ## Docs
 
 - `docs/` — Implementation details, roadmap, architecture, use cases
-- Obsidian vault: `~/gdrive/obsidian/Personal/Ideas/Research Notes/AI Env/`
+- `CONTEXT.md` — Domain glossary (black box agent, trust, audit, learn mode)
+- `docs/adr/` — Architecture Decision Records
 
 ## Agent skills
 

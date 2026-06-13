@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kapilratnani/aienv/internal/config"
 	"github.com/kapilratnani/aienv/internal/env"
 	"github.com/spf13/cobra"
 )
@@ -15,54 +14,47 @@ var showCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
-
-		if err := config.IsValidName(name); err != nil {
+		e, err := env.Load(name)
+		if err != nil {
 			return err
 		}
 
-		e, err := env.Load(name)
-		if err != nil {
-			return fmt.Errorf("loading environment %q: %w", name, err)
+		fmt.Printf("Name:        %s\n", e.Meta.Name)
+		if e.Meta.Description != "" {
+			fmt.Printf("Description: %s\n", e.Meta.Description)
 		}
-
-		mcpNames := make([]string, 0, len(e.MCPServers))
-		for name := range e.MCPServers {
-			mcpNames = append(mcpNames, name)
+		fmt.Printf("Agent:       %s\n", strings.Join(e.Agent.Command, " "))
+		if len(e.Agent.Args) > 0 {
+			fmt.Printf("Args:        %s\n", strings.Join(e.Agent.Args, " "))
 		}
-
-		skillNames := make([]string, len(e.Skills))
-		for i, s := range e.Skills {
-			skillNames[i] = s.Name
+		fmt.Printf("Mounts:\n")
+		for _, m := range e.Agent.Mounts {
+			rw := "ro"
+			if m.Writable {
+				rw = "rw"
+			}
+			fmt.Printf("  - %s → %s (%s)\n", m.Source, m.Target, rw)
 		}
-
-		rules := make([]string, len(e.Rules))
-		for i, r := range e.Rules {
-			rules[i] = r.Path
+		if len(e.Deps.Packages) > 0 {
+			fmt.Printf("Packages:    %s\n", strings.Join(e.Deps.Packages, ", "))
 		}
-
-		fmt.Printf("Name:        %s\n", e.Name)
-		fmt.Printf("Agent:       %s\n", e.Agent)
-		if e.Model != "" {
-			fmt.Printf("Model:       %s\n", e.Model)
+		if len(e.Deps.Custom) > 0 {
+			fmt.Printf("Custom deps: %s\n", strings.Join(e.Deps.Custom, ", "))
 		}
-		if e.Description != "" {
-			fmt.Printf("Description: %s\n", e.Description)
+		if e.Permissions != nil && e.Permissions.Network != nil {
+			fmt.Printf("Network:\n")
+			for _, h := range e.Permissions.Network.Allow {
+				fmt.Printf("  allow: %s\n", h)
+			}
+			for _, h := range e.Permissions.Network.Deny {
+				fmt.Printf("  deny: %s\n", h)
+			}
 		}
-		if e.Workdir != "" {
-			fmt.Printf("Workdir:     %s\n", e.Workdir)
+		if e.Audit.Persist {
+			fmt.Printf("Audit: enabled (%v)\n", e.Audit.Capture)
 		}
-		fmt.Printf("MCPs:        %s\n", joinOrNone(mcpNames))
-		fmt.Printf("Skills:      %s\n", joinOrNone(skillNames))
-		fmt.Printf("Rules:       %s\n", joinOrNone(rules))
 		return nil
 	},
-}
-
-func joinOrNone(items []string) string {
-	if len(items) == 0 {
-		return "(none)"
-	}
-	return strings.Join(items, ", ")
 }
 
 func init() {

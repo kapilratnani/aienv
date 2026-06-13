@@ -9,57 +9,67 @@
 ## Project Layout
 
 ```
-cmd/              — Thin Cobra commands (create, activate, list, show, edit, delete, docker)
+cmd/              — Thin Cobra commands (create, activate, list, show, edit, delete, build, clean)
 internal/         — Core logic (unexported packages)
+  audit/          — JSONL audit log schema and writer
+  config/         — XDG paths, hash computation, session ID generation, trust cache paths
+  docker/         — Docker sandbox (build, run, proxy, trust prompts)
   env/            — Env struct, YAML load/save/validate
-  agents/         — Agent interface + per-agent config generation
-    opencode/     — OpenCode agent (opencode.json generation)
-    claude/       — Claude Code agent (mcp-config.json + CLAUDE.md generation)
-  skills/         — Skill verify and install
-  registry/       — MCP registry and skills.sh API clients
-  assets/         — Curated MCP/skill YAML loader (embed.FS + user overrides)
-  docker/         — Docker sandbox container (build + run)
-  config/         — Path helpers
-curated/          — YAML-backed curated MCP and skill lists (embedded via embed.FS)
-examples/         — Reference env YAML files
-docs/             — Documentation
+docs/             — Documentation, ADRs, agent skill references
 ```
 
 ## Activation Model
 
-- Environments stored at `~/.ai-envs/<name>/`
-- All activation launches a Docker container — no shell function, no eval
-- `OPENCODE_CONFIG` is set inside the container via `-e` flag
+- Environments stored at `~/.local/share/aienv/<name>/env.yaml` (XDG-compliant)
+- Each `aienv up` generates a session ID, creates an audit dir, and runs a new `--read-only` container
+- Image cached by env.yaml content hash; auto-rebuilt on content change
+- Network proxy runs on the host and enforces allow/deny/learn rules
+- Audit logs written to `~/.local/share/aienv/<name>/audit/<session-id>/`
 
-## Config Inheritance
+## Trust System
 
-- Generated config contains **only** env-specific overrides (`mcp`, `model`, `instructions`, `permission`)
-- OpenCode's native config merging (global → `OPENCODE_CONFIG`) handles inheritance of all other keys
-- Global MCPs are disabled at the env level by emitting `"enabled": false` for servers not in the env
+- First activation shows a trust prompt with mounts and network rules
+- Trust cached at `~/.config/aienv/trust/<content-hash>.json`
+- Cache invalidated when env.yaml changes (different hash)
+- `aienv clean` clears orphaned trust cache entries
 
-## Multi-Agent Architecture
+## Audit Logging
 
-- `internal/agents/agent.go` defines the `Agent` interface (`Name()`, `GenerateFiles()`, `DockerConfig()`)
-- Global `Register()` / `Get()` registry for pluggable agents
-- New agents register via blank import in `agent_import.go`
-- Supported: OpenCode, Claude Code
+- Session metadata written as `session.meta.json` on the host
+- Network requests logged as JSONL to `network.jsonl` in the audit dir
+- Writer runs on the host (proxy process); container sees audit dir as a writable bind mount
 
-## Curated Config
+## Black Box Agent Architecture
 
-- YAML files at `curated/mcps.yaml` + `curated/skills.yaml`, bundled via `embed.FS`
-- User overrides: `~/.config/aienv/curated/*.yaml` merged by name, tagged `(user override)` in menus
-- Registry API parses `packages[].registryType` + `packages[].identifier` for command generation:
-  - npm → `npx -y`
-  - pypi → `uvx`
-  - go → `go run`
+- Agents are specified entirely through YAML (install, command, mounts, env vars)
+- aienv never generates agent config files, installs MCPs, or understands agent-specific formats
+- Per-agent Go implementations were deleted in favor of this generic approach
 
 ## Schema
 
-- Flat YAML, no anchors, no plugins/context fields
-- Fields: `name`, `agent`, `model`, `prompt`, `mcp`, `skills`, `rules`
-
-## Market Research
-
-- MCP ecosystem: 10K+ servers available, 97M+ SDK downloads
-- #1 pain point: context token bloat from too many active MCPs
-- aienv positioned as "virtualenv for AI" — encapsulates per-task MCPs, skills, and rules
+```yaml
+env:
+  name: my-env
+  description: My AI environment
+agent:
+  install:
+    - npm install -g opencode-ai
+  command: [opencode]
+  mounts:
+    - source: ~/project
+      target: /workspace
+    - source: ~/.config/opencode
+      target: /home/agent/.config/opencode
+      writable: true
+deps:
+  packages: [golang, nodejs]
+  custom: [go install foo/bar]
+permissions:
+  network:
+    allow: [api.github.com, api.anthropic.com]
+    deny: [*]
+    learn: false
+audit:
+  persist: true
+  capture: [network]
+```

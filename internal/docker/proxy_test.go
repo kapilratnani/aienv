@@ -1,6 +1,8 @@
 package docker
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestDomainMatch(t *testing.T) {
 	tests := []struct {

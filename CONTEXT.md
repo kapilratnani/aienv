@@ -1,47 +1,34 @@
 # aienv Domain Context
 
-## Core Concepts
+AI agent sandboxing platform that provides isolation, dependency management, and comprehensive audit trails for coding agents.
 
-### Environment
-A self-contained directory that encapsulates MCP servers, agent skills, and configuration needed for a specific AI coding task. Similar to Python's virtualenv but for AI agents.
+## Language
 
-### Agent
-An AI coding assistant (like OpenCode, Claude Code) that can be launched within an environment. Each agent has specific configuration and execution requirements.
+**Black Box Agent**:
+An AI coding assistant (OpenCode, Claude Code, Cursor, etc.) treated as an opaque binary. aienv does not generate config files, install MCPs, or understand agent-specific formats. The user provides the agent binary, its config, and any tools it needs.
+_Avoid_: Agent integration, agent support
 
-### Workdir
-The working directory that gets mounted into the agent container at `/workspace`. This is where the user's code resides and where the agent operates.
+**Environment**:
+A named, self-contained configuration at `~/.local/share/aienv/<name>/env.yaml` that declares which agent to run, what to mount, what dependencies to install, and what security rules to enforce. Analogous to a Docker Compose service definition but for AI agents.
+_Avoid_: Virtualenv, workspace
 
-### Docker Container
-The execution environment for agents in Docker-only mode. All agent activation happens through `docker run` with appropriate mounts, environment variables, and entrypoint.
+**Build-time Image**:
+A Docker image generated from an Environment definition. The base image (`aienv/sandbox:latest`) contains governance scripts; the user's env adds agent installation, system packages, and custom tools via a generated Dockerfile. Cached by hash of the env.yaml content.
 
-### MCP Server
-Model Context Protocol servers that provide tools, resources, and capabilities to AI agents. Can be local (stdio) or remote (HTTP/SSE).
+**Governance Scripts**:
+The entrypoint wrapper and supporting tools in the base image that provide audit logging, network enforcement, and session management without modifying the agent binary.
 
-### Skill
-Reusable functionality that can be added to environments to extend agent capabilities with specific domain knowledge or tools.
+**Mount**:
+A host-to-container bind mount declared in the Environment. All mounts are read-only by default; the `writable` flag makes a mount read-write for persistent agent state (auth tokens, sessions, cache).
 
-### Permission
-Security boundaries that control what an agent can access (filesystem, network, bash commands) and how.
+**Permissions**:
+Sandbox-level security rules enforced by the network proxy (allow/deny/learn for HTTP/S hosts) and Docker run flags (`--read-only`, allowed filesystem paths).
 
-## Key Relationships
+**Audit Log**:
+Append-only JSONL event stream capturing commands executed and network requests made inside the sandbox. Written to `~/.local/share/aienv/<name>/audit/<session-id>/events.jsonl`.
 
-- An Environment contains zero or more MCP Servers
-- An Environment contains zero or more Skills  
-- An Environment specifies exactly one Agent to use
-- An Environment has optional Permission constraints
-- An Environment has an optional Workdir (required in Docker-only mode)
-- Agents generate configuration files based on Environment specifications
-- Agents run inside Docker containers with environment-specific configuration mounted in
+**Learn Mode**:
+A permissions mode where the network proxy logs all hosts contacted and suggests an allowlist on exit. Default when no `permissions.network.allow` is configured.
 
-## Operational Flow
-
-1. User creates environment with `aienv create <name>`
-2. User activates environment with `aienv activate <name>` (or just `aienv <name>`)
-3. System generates agent configuration files in environment directory
-4. System launches agent in Docker container with:
-   - Workdir mounted at `/workspace`
-   - Agent-specific configuration mounted at appropriate paths
-   - Environment variables set for agent configuration
-   - MCP servers connected via stdio or network
-   - Skills made available to agent
-   - Permissions enforced through container restrictions
+**Session**:
+A single invocation of `aienv up`. Each activation creates a new container with a unique session ID. Concurrent activations produce separate containers.

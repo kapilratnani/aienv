@@ -1,9 +1,9 @@
 package config
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,27 +11,51 @@ import (
 	"time"
 )
 
+func GenerateSessionID() string {
+	b := make([]byte, 4)
+	rand.Read(b)
+	t := time.Now().UTC().Format("20060102-150405")
+	return fmt.Sprintf("%s-%s", t, hex.EncodeToString(b))
+}
+
 var validName = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
-func AIEnvsDir() string {
+// test overrides — set in tests to avoid touching real XDG paths.
+var (
+	TestDataDir  string
+	TestTrustDir string
+)
+
+func DataDir() string {
+	if TestDataDir != "" {
+		return TestDataDir
+	}
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".ai-envs")
+	return filepath.Join(home, ".local", "share", "aienv")
 }
 
 func EnvDir(name string) string {
-	return filepath.Join(AIEnvsDir(), name)
+	return filepath.Join(DataDir(), name)
 }
 
 func EnvYAML(name string) string {
-	return filepath.Join(EnvDir(name), "ai-env.yaml")
+	return filepath.Join(EnvDir(name), "env.yaml")
 }
 
-func OpenCodeJSON(name string) string {
-	return filepath.Join(EnvDir(name), "opencode.json")
+func AuditDir(name, sessionID string) string {
+	return filepath.Join(EnvDir(name), "audit", sessionID)
 }
 
-func AgentConfigPath(name, filename string) string {
-	return filepath.Join(EnvDir(name), filename)
+func TrustDir() string {
+	if TestTrustDir != "" {
+		return TestTrustDir
+	}
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".config", "aienv", "trust")
+}
+
+func TrustCachePath(hash string) string {
+	return filepath.Join(TrustDir(), hash+".json")
 }
 
 func IsValidName(name string) error {
@@ -41,82 +65,32 @@ func IsValidName(name string) error {
 	return nil
 }
 
-type TrustEntry struct {
-	Status     string `json:"status"`
-	ReviewedAt string `json:"reviewed_at"`
-	EnvName    string `json:"env_name"`
-	YAMLHash   string `json:"yaml_hash"`
-}
-
-func TrustDir() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".config", "aienv", "trust")
-}
-
-func TrustCachePath(hash string) string {
-	return filepath.Join(TrustDir(), hash+".json")
-}
-
 func ComputeHash(data []byte) string {
 	h := sha256.Sum256(data)
 	return hex.EncodeToString(h[:])
 }
 
-func ReadTrustCache(hash string) (*TrustEntry, error) {
-	path := TrustCachePath(hash)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	var entry TrustEntry
-	if err := json.Unmarshal(data, &entry); err != nil {
-		return nil, err
-	}
-	return &entry, nil
+func ImageTag(hash string) string {
+	return fmt.Sprintf("aienv/env:%s", hash)
 }
 
-func WriteTrustCache(hash, envName string) error {
-	dir := TrustDir()
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("creating trust dir: %w", err)
-	}
-	entry := TrustEntry{
-		Status:     "trusted",
-		ReviewedAt: time.Now().UTC().Format(time.RFC3339),
-		EnvName:    envName,
-		YAMLHash:   hash,
-	}
-	data, err := json.Marshal(entry)
-	if err != nil {
-		return fmt.Errorf("marshalling trust entry: %w", err)
-	}
-	return os.WriteFile(TrustCachePath(hash), data, 0644)
-}
-
-func InvalidateTrustCache(envName string) error {
-	dir := TrustDir()
+func ListEnvNames() ([]string, error) {
+	dir := DataDir()
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil
+			return nil, nil
 		}
-		return fmt.Errorf("reading trust dir: %w", err)
+		return nil, fmt.Errorf("reading %s: %w", dir, err)
 	}
-	for _, entry := range entries {
-		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(dir, entry.Name()))
-		if err != nil {
-			continue
-		}
-		var te TrustEntry
-		if err := json.Unmarshal(data, &te); err != nil {
-			continue
-		}
-		if te.EnvName == envName {
-			os.Remove(filepath.Join(dir, entry.Name()))
+	var names []string
+	for _, e := range entries {
+		if e.IsDir() && validName.MatchString(e.Name()) {
+			path := filepath.Join(dir, e.Name(), "env.yaml")
+			if _, err := os.Stat(path); err == nil {
+				names = append(names, e.Name())
+			}
 		}
 	}
-	return nil
+	return names, nil
 }

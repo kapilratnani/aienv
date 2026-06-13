@@ -6,51 +6,51 @@ import (
 )
 
 type Env struct {
-	Name        string               `yaml:"name"`
-	Agent       string               `yaml:"agent"`
-	Model       string               `yaml:"model,omitempty"`
-	Description string               `yaml:"description,omitempty"`
-	Prompt      string               `yaml:"prompt,omitempty"`
-	Workdir     string               `yaml:"workdir,omitempty"`
-	MCPServers  map[string]MCPServer `yaml:"mcp"`
-	Skills      []Skill              `yaml:"skills"`
-	Rules       []Rule               `yaml:"rules"`
-	Permissions *Permissions         `yaml:"permissions,omitempty"`
+	Meta        EnvMeta      `yaml:"env"`
+	Agent       AgentConfig  `yaml:"agent"`
+	Deps        DepsConfig   `yaml:"deps,omitempty"`
+	Permissions *Permissions `yaml:"permissions,omitempty"`
+	Audit       AuditConfig  `yaml:"audit,omitempty"`
 }
 
-type MCPServer struct {
-	Type    string            `yaml:"type"`
-	Command []string          `yaml:"command,omitempty"`
-	URL     string            `yaml:"url,omitempty"`
+type EnvMeta struct {
+	Name        string `yaml:"name"`
+	Description string `yaml:"description,omitempty"`
+}
+
+type AgentConfig struct {
+	Install []string          `yaml:"install"`
+	Command []string          `yaml:"command"`
+	Args    []string          `yaml:"args,omitempty"`
 	Env     map[string]string `yaml:"env,omitempty"`
-	Headers map[string]string `yaml:"headers,omitempty"`
+	Mounts  []Mount           `yaml:"mounts"`
 }
 
-type Skill struct {
-	Name    string `yaml:"name"`
-	Source  string `yaml:"source"`
-	Package string `yaml:"package,omitempty"`
-	Path    string `yaml:"path,omitempty"`
+type Mount struct {
+	Source   string `yaml:"source"`
+	Target   string `yaml:"target"`
+	Writable bool   `yaml:"writable,omitempty"`
 }
 
-type Rule struct {
-	Path string `yaml:"path"`
+type DepsConfig struct {
+	Packages []string `yaml:"packages,omitempty"`
+	Custom   []string `yaml:"custom,omitempty"`
 }
 
 type Permissions struct {
-	Filesystem *FilesystemPermissions `yaml:"filesystem,omitempty"`
-	Bash       map[string]string      `yaml:"bash,omitempty"`
-	Network    *NetworkPermissions    `yaml:"network,omitempty"`
-}
-
-type FilesystemPermissions struct {
-	Read map[string]string `yaml:"read,omitempty"`
-	Edit map[string]string `yaml:"edit,omitempty"`
+	Network    *NetworkPermissions `yaml:"network,omitempty"`
+	Filesystem []string            `yaml:"filesystem,omitempty"`
 }
 
 type NetworkPermissions struct {
 	Allow []string `yaml:"allow,omitempty"`
 	Deny  []string `yaml:"deny,omitempty"`
+	Learn bool     `yaml:"learn,omitempty"`
+}
+
+type AuditConfig struct {
+	Persist bool     `yaml:"persist"`
+	Capture []string `yaml:"capture,omitempty"`
 }
 
 func ExpandTilde(path string) string {
@@ -63,4 +63,15 @@ func ExpandTilde(path string) string {
 		return filepath.Join(home, path[2:])
 	}
 	return path
+}
+
+func (m *Mount) ResolveSource() string {
+	return ExpandTilde(m.Source)
+}
+
+func (m *Mount) ResolveTarget() string {
+	if len(m.Target) > 0 && m.Target[0] == '~' {
+		return "/home/agent" + m.Target[1:]
+	}
+	return m.Target
 }

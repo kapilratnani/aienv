@@ -6,14 +6,23 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
+	"sort"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/kapilratnani/aienv/internal/audit"
 )
 
 type Proxy struct {
-	allowlist []string
-	denylist  []string
-	server    *http.Server
+	allowlist   []string
+	denylist    []string
+	server      *http.Server
+	learn       bool
+	auditWriter *audit.Writer
+	learnHosts  map[string]bool
+	mu          sync.Mutex
 }
 
 func domainMatch(pattern, host string) bool {
@@ -50,6 +59,22 @@ func (p *Proxy) isAllowed(host string) bool {
 	return true
 }
 
+func (p *Proxy) record(host, method string, allowed bool) {
+	if p.learn {
+		p.mu.Lock()
+		p.learnHosts[host] = true
+		p.mu.Unlock()
+	}
+	if p.auditWriter != nil {
+		p.auditWriter.AppendNetworkEntry(audit.NetworkEntry{
+			Timestamp: time.Now().UTC(),
+			Host:      host,
+			Method:    method,
+			Allowed:   allowed,
+		})
+	}
+}
+
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "CONNECT" {
 		p.handleConnect(w, r)
@@ -60,7 +85,10 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	host := r.URL.Hostname()
-	if !p.isAllowed(host) {
+	allowed := p.isAllowed(host)
+	p.record(host, r.Method, allowed)
+
+	if !allowed {
 		slog.Info("request denied by network policy", "host", host)
 		http.Error(w, fmt.Sprintf("Access denied by network policy: %s", host), http.StatusForbidden)
 		return
@@ -87,7 +115,10 @@ func (p *Proxy) handleConnect(w http.ResponseWriter, r *http.Request) {
 	if idx := strings.LastIndex(host, ":"); idx >= 0 {
 		host = host[:idx]
 	}
-	if !p.isAllowed(host) {
+	allowed := p.isAllowed(host)
+	p.record(host, "CONNECT", allowed)
+
+	if !allowed {
 		slog.Info("CONNECT denied by network policy", "host", host)
 		http.Error(w, fmt.Sprintf("Access denied by network policy: %s", host), http.StatusForbidden)
 		return
@@ -128,10 +159,15 @@ func (p *Proxy) handleConnect(w http.ResponseWriter, r *http.Request) {
 	<-done
 }
 
-func RunProxy(allowlist, denylist []string, bindAddr string) (*Proxy, int, error) {
+func RunProxy(allowlist, denylist []string, bindAddr string, auditWriter *audit.Writer) (*Proxy, int, error) {
+	learn := len(allowlist) == 0 && len(denylist) == 0
+
 	p := &Proxy{
-		allowlist: allowlist,
-		denylist:  denylist,
+		allowlist:   allowlist,
+		denylist:    denylist,
+		learn:       learn,
+		auditWriter: auditWriter,
+		learnHosts:  make(map[string]bool),
 	}
 
 	listener, err := net.Listen("tcp", bindAddr+":0")
@@ -147,7 +183,7 @@ func RunProxy(allowlist, denylist []string, bindAddr string) (*Proxy, int, error
 
 	go p.server.Serve(listener)
 
-	slog.Info("proxy started", "addr", fmt.Sprintf("%s:%d", bindAddr, port))
+	slog.Info("proxy started", "addr", fmt.Sprintf("%s:%d", bindAddr, port), "learn", learn)
 
 	return p, port, nil
 }
@@ -157,4 +193,19 @@ func (p *Proxy) Close() {
 		p.server.Close()
 	}
 	slog.Info("proxy stopped")
+
+	// Print learn mode summary to stderr
+	if p.learn && len(p.learnHosts) > 0 {
+		hosts := make([]string, 0, len(p.learnHosts))
+		for h := range p.learnHosts {
+			hosts = append(hosts, h)
+		}
+		sort.Strings(hosts)
+		fmt.Fprintf(os.Stderr, "\n--- Learn Mode: Hosts Accessed ---\n")
+		for _, h := range hosts {
+			fmt.Fprintf(os.Stderr, "  %s\n", h)
+		}
+		fmt.Fprintf(os.Stderr, "---\n")
+		fmt.Fprintf(os.Stderr, "Add these to permissions.network.allow in your env config.\n\n")
+	}
 }
