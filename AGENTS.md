@@ -48,3 +48,17 @@ Go CLI tool for managing task-specific AI coding environments.
 
 - `docs/` — Implementation details, roadmap, architecture, use cases
 - Obsidian vault: `~/gdrive/obsidian/Personal/Ideas/Research Notes/AI Env/`
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues (uses `gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Uses default triage label names: needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout: one CONTEXT.md + docs/adr/ at repo root. See `docs/agents/domain.md`.

@@ -2,14 +2,13 @@ package docker
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"syscall"
 
+	"github.com/kapilratnani/aienv/internal/agents"
 	"github.com/kapilratnani/aienv/internal/config"
 	"github.com/kapilratnani/aienv/internal/env"
 )
@@ -101,7 +100,8 @@ func mountIsolatedVolume(hostDir, volName, imageTag string) error {
 	return nil
 }
 
-func Run(e *env.Env, cwd string) error {
+// Run executes the agent in a Docker container with the given environment and workdir.
+func Run(e *env.Env, workdir string, sessionID string) error {
 	if err := Check(); err != nil {
 		return err
 	}
@@ -110,7 +110,6 @@ func Run(e *env.Env, cwd string) error {
 		return err
 	}
 
-	sessionID := fmt.Sprintf("aienv-%s-%d", e.Name, rand.Uint64())
 	var cleanupVolumes []string
 
 	sigCh := make(chan os.Signal, 1)
@@ -128,65 +127,58 @@ func Run(e *env.Env, cwd string) error {
 		}
 	}()
 
+	// Get agent-specific Docker configuration
+	ag, err := agents.Get(e.Agent)
+	if err != nil {
+		return err
+	}
+	dockerCfg, err := ag.DockerConfig(config.EnvDir(e.Name), e, sessionID)
+	if err != nil {
+		return fmt.Errorf("getting docker config for agent %q: %w", e.Agent, err)
+	}
+
 	args := []string{
 		"run", "--rm", "-it",
 	}
 
-	args = append(args, "-v", fmt.Sprintf("%s:/workspace", cwd))
+	// Mount workdir as /workspace
+	args = append(args, "-v", fmt.Sprintf("%s:/workspace", workdir))
+	args = append(args, "--workdir", "/workspace")
 
-	opencodeConfigDir := filepath.Join(os.Getenv("HOME"), ".config", "opencode")
-	if info, err := os.Stat(opencodeConfigDir); err == nil && info.IsDir() {
-		args = append(args, "-v", fmt.Sprintf("%s:/home/user/.config/opencode:ro", opencodeConfigDir))
-	}
-
-	opencodeLocalDir := filepath.Join(os.Getenv("HOME"), ".local", "share", "opencode")
-	if info, err := os.Stat(opencodeLocalDir); err == nil && info.IsDir() {
-		volName := sessionID + "-share"
-		if err := mountIsolatedVolume(opencodeLocalDir, volName, imageTag(e.Agent)); err != nil {
-			return err
+	// Mount .gitconfig for commit authorship
+	home, _ := os.UserHomeDir()
+	if home != "" {
+		gcPath := filepath.Join(home, ".gitconfig")
+		if _, err := os.Stat(gcPath); err == nil {
+			args = append(args, "-v", fmt.Sprintf("%s:/home/user/.gitconfig:ro", gcPath))
 		}
-		cleanupVolumes = append(cleanupVolumes, volName)
-		args = append(args, "-v", fmt.Sprintf("%s:/home/user/.local/share/opencode", volName))
 	}
 
-	gitCfg := filepath.Join(os.Getenv("HOME"), ".gitconfig")
-	if _, err := os.Stat(gitCfg); err == nil {
-		args = append(args, "-v", fmt.Sprintf("%s:/home/user/.gitconfig:ro", gitCfg))
+	// Agent-specific mounts
+	for _, m := range dockerCfg.Mounts {
+		args = append(args, "-v", m)
 	}
 
+	// Agent-specific environment variables
+	for _, ev := range dockerCfg.EnvVars {
+		args = append(args, "-e", ev)
+	}
+
+	// Agent-specific isolated volumes for persistent state (auth, sessions)
 	switch e.Agent {
 	case "opencode":
-		ocJSON := config.OpenCodeJSON(e.Name)
-		args = append(args, "-v", fmt.Sprintf("%s:/ai-env/opencode.json:ro", ocJSON))
-
-		for _, skill := range e.Skills {
-			for _, prefix := range []string{".agents/skills", ".config/opencode/skills"} {
-				dir := filepath.Join(os.Getenv("HOME"), prefix, skill.Name)
-				if info, err := os.Stat(dir); err == nil && info.IsDir() {
-					containerPath := fmt.Sprintf("/home/user/%s/%s", prefix, skill.Name)
-					args = append(args, "-v", fmt.Sprintf("%s:%s:ro", dir, containerPath))
-					break
-				}
+		opencodeLocalDir := filepath.Join(home, ".local", "share", "opencode")
+		if info, err := os.Stat(opencodeLocalDir); err == nil && info.IsDir() {
+			volName := sessionID + "-share"
+			if err := mountIsolatedVolume(opencodeLocalDir, volName, imageTag(e.Agent)); err != nil {
+				return err
 			}
+			cleanupVolumes = append(cleanupVolumes, volName)
+			args = append(args, "-v", fmt.Sprintf("%s:/home/user/.local/share/opencode", volName))
 		}
-
-		args = append(args, "-e", "OPENCODE_CONFIG=/ai-env/opencode.json")
 
 	case "claude-code":
-		mcpCfg := filepath.Join(config.EnvDir(e.Name), "mcp-config.json")
-		args = append(args, "-v", fmt.Sprintf("%s:/ai-env/mcp-config.json:ro", mcpCfg))
-
-		claudeMD := filepath.Join(config.EnvDir(e.Name), "CLAUDE.md")
-		args = append(args, "-v", fmt.Sprintf("%s:/ai-env/CLAUDE.md:ro", claudeMD))
-
-		if e.Permissions != nil {
-			claudeSettings := filepath.Join(config.EnvDir(e.Name), "claude-settings.json")
-			if _, err := os.Stat(claudeSettings); err == nil {
-				args = append(args, "-v", fmt.Sprintf("%s:/ai-env/claude-settings.json:ro", claudeSettings))
-			}
-		}
-
-		claudeHome := filepath.Join(os.Getenv("HOME"), ".claude")
+		claudeHome := filepath.Join(home, ".claude")
 		if info, err := os.Stat(claudeHome); err == nil && info.IsDir() {
 			volName := sessionID + "-claude"
 			if err := mountIsolatedVolume(claudeHome, volName, imageTag(e.Agent)); err != nil {
@@ -195,16 +187,9 @@ func Run(e *env.Env, cwd string) error {
 			cleanupVolumes = append(cleanupVolumes, volName)
 			args = append(args, "-v", fmt.Sprintf("%s:/home/user/.claude", volName))
 		}
-
-		claudeJSON := filepath.Join(os.Getenv("HOME"), ".claude.json")
-		if _, err := os.Stat(claudeJSON); err == nil {
-			args = append(args, "-v", fmt.Sprintf("%s:/home/user/.claude.json.ro:ro", claudeJSON))
-		}
-
-	default:
-		return fmt.Errorf("unsupported agent %q for Docker sandbox", e.Agent)
 	}
 
+	// Generic environment variables
 	for _, key := range []string{"TERM", "COLORTERM", "LANG", "LC_ALL", "LC_CTYPE"} {
 		if val := os.Getenv(key); val != "" {
 			args = append(args, "-e", fmt.Sprintf("%s=%s", key, val))
@@ -213,6 +198,7 @@ func Run(e *env.Env, cwd string) error {
 
 	args = append(args, "-e", "HOME=/home/user")
 
+	// Network proxy setup if needed
 	if e.Permissions != nil && e.Permissions.Network != nil {
 		allowlist := e.Permissions.Network.Allow
 		denylist := e.Permissions.Network.Deny
@@ -242,6 +228,7 @@ func Run(e *env.Env, cwd string) error {
 		args = append(args, "-e", "NO_PROXY=localhost,127.0.0.1")
 	}
 
+	// MCP server environment variables
 	for _, srv := range e.MCPServers {
 		for _, val := range srv.Env {
 			if len(val) > 4 && val[:4] == "env:" {
@@ -253,40 +240,9 @@ func Run(e *env.Env, cwd string) error {
 		}
 	}
 
-	switch e.Agent {
-	case "opencode":
-		args = append(args, imageTag(e.Agent), "opencode")
-	case "claude-code":
-		claudeArgs := []string{"claude"}
-		claudeArgs = append(claudeArgs, "--mcp-config", "/ai-env/mcp-config.json")
-		claudeArgs = append(claudeArgs, "--append-system-prompt-file", "/ai-env/CLAUDE.md")
-
-		if e.Permissions != nil {
-			claudeArgs = append(claudeArgs, "--settings", "/ai-env/claude-settings.json")
-		}
-
-		for _, rule := range e.Rules {
-			containerPath := rule.Path
-			if !filepath.IsAbs(rule.Path) {
-				containerPath = filepath.Join("/workspace", rule.Path)
-			} else {
-				if _, err := os.Stat(rule.Path); err == nil {
-					args = append(args, "-v", fmt.Sprintf("%s:%s:ro", rule.Path, rule.Path))
-				}
-			}
-			claudeArgs = append(claudeArgs, "--append-system-prompt-file", containerPath)
-		}
-
-		claudeArgs = append(claudeArgs, "--strict-mcp-config")
-		if e.Model != "" {
-			claudeArgs = append(claudeArgs, "--model", e.Model)
-		}
-		args = append(args, imageTag(e.Agent))
-		args = append(args, "sh", "-c",
-			fmt.Sprintf("cp /home/user/.claude.json.ro /home/user/.claude.json 2>/dev/null; exec claude %s",
-				strings.Join(claudeArgs[1:], " ")))
-	}
-
+	// Entrypoint: [image:tag, "command", "--flag", ...]
+	args = append(args, dockerCfg.Entrypoint...)
+	fmt.Printf("%v\n", args)
 	cmd := exec.Command("docker", args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

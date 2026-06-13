@@ -60,16 +60,39 @@ func (a *agent) GenerateFiles(e *env.Env, cwd string) ([]agents.AgentFile, error
 	}, nil
 }
 
-func (a *agent) ActivateCommand(envDir string, e *env.Env) string {
-	absPath := filepath.Join(envDir, "opencode.json")
+func (a *agent) DockerConfig(envDir string, e *env.Env, sessionID string) (*agents.DockerConfig, error) {
+	home, _ := os.UserHomeDir()
 
-	shell := filepath.Base(os.Getenv("SHELL"))
-	switch shell {
-	case "fish":
-		return fmt.Sprintf("set -x OPENCODE_CONFIG %s;\nopencode\nset -e OPENCODE_CONFIG;\n", absPath)
-	default:
-		return fmt.Sprintf("export OPENCODE_CONFIG=%s\nopencode\nunset OPENCODE_CONFIG\n", absPath)
+	mounts := []string{
+		fmt.Sprintf("%s:/workspace/.aienv:ro", envDir),
 	}
+
+	// Mount global OpenCode config (MCP servers, permissions, skills config)
+	opencodeConfigDir := filepath.Join(home, ".config", "opencode")
+	if info, err := os.Stat(opencodeConfigDir); err == nil && info.IsDir() {
+		mounts = append(mounts, fmt.Sprintf("%s:/home/user/.config/opencode:ro", opencodeConfigDir))
+	}
+
+	// Mount installed skill directories
+	for _, s := range e.Skills {
+		for _, prefix := range []string{".agents/skills", ".config/opencode/skills"} {
+			dir := filepath.Join(home, prefix, s.Name)
+			if info, err := os.Stat(dir); err == nil && info.IsDir() {
+				containerPath := fmt.Sprintf("/home/user/%s/%s", prefix, s.Name)
+				mounts = append(mounts, fmt.Sprintf("%s:%s:ro", dir, containerPath))
+				break
+			}
+		}
+	}
+
+	return &agents.DockerConfig{
+		Mounts:  mounts,
+		EnvVars: []string{"OPENCODE_CONFIG=/workspace/.aienv/opencode.json"},
+		Entrypoint: []string{
+			"aienv/sandbox:latest-opencode",
+			"opencode",
+		},
+	}, nil
 }
 
 func readGlobalConfig() map[string]any {

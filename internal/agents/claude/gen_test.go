@@ -1,7 +1,6 @@
 package claude
 
 import (
-	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -95,21 +94,29 @@ func TestBuildClaudeSettings(t *testing.T) {
 	})
 }
 
-func TestActivateCommand(t *testing.T) {
-	t.Run("basic command includes mcp-config and claude-md", func(t *testing.T) {
+func TestDockerConfig(t *testing.T) {
+	t.Run("basic config includes required flags", func(t *testing.T) {
 		a := &agent{}
-		cmd := a.ActivateCommand("/envs/test", &env.Env{Name: "test"})
-		if cmd == "" {
-			t.Fatal("expected non-empty command")
+		e := &env.Env{Name: "test", Workdir: "/tmp"}
+		cfg, err := a.DockerConfig("/envs/test", e, "sess-1")
+		if err != nil {
+			t.Fatal(err)
 		}
-		if !strings.Contains(cmd, "--mcp-config") {
+		entry := strings.Join(cfg.Entrypoint, " ")
+		if !strings.Contains(entry, "--mcp-config") {
 			t.Error("expected --mcp-config flag")
 		}
-		if !strings.Contains(cmd, "--append-system-prompt-file") {
+		if !strings.Contains(entry, "/workspace/.aienv/mcp-config.json") {
+			t.Error("expected mcp-config pointing to /workspace/.aienv/")
+		}
+		if !strings.Contains(entry, "--append-system-prompt-file") {
 			t.Error("expected --append-system-prompt-file flag")
 		}
-		if !strings.Contains(cmd, "--strict-mcp-config") {
+		if !strings.Contains(entry, "--strict-mcp-config") {
 			t.Error("expected --strict-mcp-config flag")
+		}
+		if len(cfg.Mounts) == 0 {
+			t.Error("expected at least one mount")
 		}
 	})
 
@@ -117,46 +124,58 @@ func TestActivateCommand(t *testing.T) {
 		a := &agent{}
 		e := &env.Env{
 			Name:        "test",
+			Workdir:     "/tmp",
 			Permissions: &env.Permissions{},
 		}
-		cmd := a.ActivateCommand("/envs/test", e)
-		if !strings.Contains(cmd, "--settings") {
+		cfg, err := a.DockerConfig("/envs/test", e, "sess-1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		entry := strings.Join(cfg.Entrypoint, " ")
+		if !strings.Contains(entry, "--settings") {
 			t.Error("expected --settings flag when permissions are set")
 		}
-	})
-
-	t.Run("with rules", func(t *testing.T) {
-		origDir, _ := os.Getwd()
-		t.Cleanup(func() { os.Chdir(origDir) })
-		tmpDir := t.TempDir()
-		os.Chdir(tmpDir)
-
-		a := &agent{}
-		e := &env.Env{
-			Name:  "test",
-			Rules: []env.Rule{{Path: "rules.md"}, {Path: "/absolute/path.md"}},
-		}
-		cmd := a.ActivateCommand("/envs/test", e)
-		if !strings.Contains(cmd, "rules.md") {
-			t.Error("expected rule file in command")
-		}
-		if !strings.Contains(cmd, "/absolute/path.md") {
-			t.Error("expected absolute rule path in command")
+		if !strings.Contains(entry, "/workspace/.aienv/claude-settings.json") {
+			t.Error("expected settings pointing to /workspace/.aienv/")
 		}
 	})
 
 	t.Run("with model", func(t *testing.T) {
 		a := &agent{}
 		e := &env.Env{
-			Name:  "test",
-			Model: "claude-sonnet-4-5",
+			Name:    "test",
+			Workdir: "/tmp",
+			Model:   "claude-sonnet-4-5",
 		}
-		cmd := a.ActivateCommand("/envs/test", e)
-		if !strings.Contains(cmd, "--model") {
+		cfg, err := a.DockerConfig("/envs/test", e, "sess-1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		entry := strings.Join(cfg.Entrypoint, " ")
+		if !strings.Contains(entry, "--model") {
 			t.Error("expected --model flag")
 		}
-		if !strings.Contains(cmd, "claude-sonnet-4-5") {
+		if !strings.Contains(entry, "claude-sonnet-4-5") {
 			t.Error("expected model name in command")
+		}
+	})
+
+	t.Run("env dir mount", func(t *testing.T) {
+		a := &agent{}
+		e := &env.Env{Name: "test", Workdir: "/tmp"}
+		cfg, err := a.DockerConfig("/envs/test", e, "sess-1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		found := false
+		for _, m := range cfg.Mounts {
+			if m == "/envs/test:/workspace/.aienv:ro" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected env dir mount, got %v", cfg.Mounts)
 		}
 	})
 }

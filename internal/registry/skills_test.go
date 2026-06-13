@@ -27,10 +27,10 @@ func TestExtractPackage(t *testing.T) {
 
 func TestSplitN(t *testing.T) {
 	tests := []struct {
-		s     string
-		sep   string
-		n     int
-		want  []string
+		s    string
+		sep  string
+		n    int
+		want []string
 	}{
 		{"a/b/c", "/", 2, []string{"a", "b/c"}},
 		{"a", "/", 2, []string{"a"}},
@@ -58,8 +58,8 @@ func TestSplitN(t *testing.T) {
 
 func TestIndexOf(t *testing.T) {
 	tests := []struct {
-		s   string
-		sep string
+		s    string
+		sep  string
 		want int
 	}{
 		{"hello", "ll", 2},

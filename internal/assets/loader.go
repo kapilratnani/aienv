@@ -23,16 +23,16 @@ type curatedMCPsFile struct {
 }
 
 type curatedMCPEntry struct {
-	Name         string              `yaml:"name"`
-	DisplayName  string              `yaml:"displayName"`
-	Command      string              `yaml:"command"`
-	Type         string              `yaml:"type"`
-	URL          string              `yaml:"url"`
-	Description  string              `yaml:"description"`
-	Package      string              `yaml:"package"`
-	RegistryType string              `yaml:"registryType"`
+	Name         string                `yaml:"name"`
+	DisplayName  string                `yaml:"displayName"`
+	Command      string                `yaml:"command"`
+	Type         string                `yaml:"type"`
+	URL          string                `yaml:"url"`
+	Description  string                `yaml:"description"`
+	Package      string                `yaml:"package"`
+	RegistryType string                `yaml:"registryType"`
 	Env          []registry.EnvVarItem `yaml:"env"`
-	Categories   []string            `yaml:"categories"`
+	Categories   []string              `yaml:"categories"`
 }
 
 type curatedSkillsFile struct {

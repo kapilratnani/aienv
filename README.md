@@ -14,12 +14,9 @@ multi-agent support (OpenCode, Claude Code), and disposable Docker sandboxes.
 
 ```bash
 go install github.com/kapilratnani/aienv@latest
-aienv init
-source ~/.zshrc
 
 aienv create backend-api    # interactive: agent, MCPs, skills
-aienv backend-api            # activate (local)
-aienv --docker backend-api   # activate (Docker sandbox)
+aienv backend-api            # activate (Docker sandbox)
 ```
 
 ## Permissions (Experimental)
@@ -53,7 +50,7 @@ Add curated MCPs to `curated/mcps.yaml` following the existing schema. Include `
 Add curated skills to `curated/skills.yaml` with a `description` that helps the create-flow search match user intent.
 
 ### New Agents
-Agent support is pluggable via `internal/agents/agent.go`. Implement the `Agent` interface (`Name()`, `GenerateFiles()`, `ActivateCommand()`) and register via blank import in `agent_import.go`.
+Agent support is pluggable via `internal/agents/agent.go`. Implement the `Agent` interface (`Name()`, `GenerateFiles()`, `DockerConfig()`) and register via blank import in `agent_import.go`.
 
 ### General
 PRs, issues, and ideas welcome. Open a discussion for larger changes before submitting.

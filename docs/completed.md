@@ -18,7 +18,7 @@
 
 **Goal**: Run agents and MCP servers inside a Docker container, isolating them from the host.
 
-**Approach**: Per-agent Dockerfiles (inline in Go source, Ubuntu 24.04 + Node.js 18 + Python 3.12 + Go 1.22), auto-built on first `--docker` use, `docker run --rm -it` with auto-cleanup on exit.
+**Approach**: Per-agent Dockerfiles (inline in Go source, Ubuntu 24.04 + Node.js 18 + Python 3.12 + Go 1.22), auto-built on first activate, `docker run --rm -it` with auto-cleanup on exit.
 
 **Volume mounts**:
 - `$(pwd):/workspace` (rw) — project source
@@ -31,7 +31,7 @@
 - UID 1000 conflict with base image's `ubuntu` user → `userdel -r ubuntu` before `useradd`
 - agent not in container → binary mount from host
 - TUI not rendering → pass `TERM`/`COLORTERM` env vars
-- eval subshell kills TTY → shell function bypasses `eval` when `--docker` is detected
+- eval subshell kills TTY → no shell function; all activation goes through `docker run` directly
 
 ## Starter Prompts
 
@@ -62,7 +62,7 @@
 - OpenCode's native config merging handles inheritance of all other keys
 - Global MCPs disabled at env level via `"enabled": false` for servers not in the env
 - Permission deep-merge: `permission.skill` sub-key merged into global `permission` object
-- Same code path for Docker and non-Docker
+- Docker-only — no non-Docker code path
 
 ## Docker Sandbox Write Isolation
 
@@ -112,8 +112,7 @@
 - Activation (`cmd/activate_cmd.go`):
   - Resolves workdir, expands `~`, validates directory exists (warns + fallback to CWD if missing)
   - Passes resolved workdir to `GenerateFiles()` for correct rule path resolution
-  - Non-Docker: prepends `cd <workdir>\n` to the activation command output → shell `eval` executes the `cd` in the calling shell
-  - Docker: passes workdir to `docker.Run()` → mounts it as `/workspace` (container's `WORKDIR /workspace` inherited from Dockerfile)
+  - All activation: passes workdir to `docker.Run()` → mounts it as `/workspace` (container's `WORKDIR /workspace` inherited from Dockerfile)
 - `show` and create summary display workdir when set
 - `edit` works naturally — field is just another YAML key
 - `ExpandTilde(path)` helper in `internal/env/env.go` shared across create and activate

@@ -6,16 +6,16 @@ import (
 )
 
 type Env struct {
-	Name        string              `yaml:"name"`
-	Agent       string              `yaml:"agent"`
-	Model       string              `yaml:"model,omitempty"`
-	Description string              `yaml:"description,omitempty"`
-	Prompt      string              `yaml:"prompt,omitempty"`
-	Workdir     string              `yaml:"workdir,omitempty"`
+	Name        string               `yaml:"name"`
+	Agent       string               `yaml:"agent"`
+	Model       string               `yaml:"model,omitempty"`
+	Description string               `yaml:"description,omitempty"`
+	Prompt      string               `yaml:"prompt,omitempty"`
+	Workdir     string               `yaml:"workdir,omitempty"`
 	MCPServers  map[string]MCPServer `yaml:"mcp"`
-	Skills      []Skill             `yaml:"skills"`
-	Rules       []Rule              `yaml:"rules"`
-	Permissions *Permissions        `yaml:"permissions,omitempty"`
+	Skills      []Skill              `yaml:"skills"`
+	Rules       []Rule               `yaml:"rules"`
+	Permissions *Permissions         `yaml:"permissions,omitempty"`
 }
 
 type MCPServer struct {

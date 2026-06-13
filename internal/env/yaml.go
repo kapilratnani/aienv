@@ -26,7 +26,28 @@ func Load(name string) (*Env, error) {
 	return &e, nil
 }
 
+func (e *Env) Validate() error {
+	if e.Name == "" {
+		return fmt.Errorf("name is required")
+	}
+	if e.Agent == "" {
+		return fmt.Errorf("agent is required")
+	}
+	switch e.Agent {
+	case "opencode", "claude-code":
+	default:
+		return fmt.Errorf("unsupported agent %q", e.Agent)
+	}
+	if e.Workdir == "" {
+		return fmt.Errorf("workdir is required")
+	}
+	return nil
+}
+
 func (e *Env) Save() error {
+	if err := e.Validate(); err != nil {
+		return err
+	}
 	envDir := filepath.Join(os.Getenv("HOME"), ".ai-envs", e.Name)
 	if err := os.MkdirAll(envDir, 0755); err != nil {
 		return fmt.Errorf("creating env dir: %w", err)
@@ -43,19 +64,4 @@ func (e *Env) Save() error {
 	}
 
 	return nil
-}
-
-func (e *Env) Validate() error {
-	if e.Name == "" {
-		return fmt.Errorf("name is required")
-	}
-	if e.Agent == "" {
-		return fmt.Errorf("agent is required")
-	}
-	switch e.Agent {
-	case "opencode", "claude-code":
-		return nil
-	default:
-		return fmt.Errorf("unsupported agent %q", e.Agent)
-	}
 }

@@ -11,8 +11,9 @@ func TestValidate(t *testing.T) {
 		{"empty name", Env{Agent: "opencode"}, true},
 		{"empty agent", Env{Name: "test"}, true},
 		{"unsupported agent", Env{Name: "test", Agent: "cursor"}, true},
-		{"valid opencode", Env{Name: "test", Agent: "opencode"}, false},
-		{"valid claude-code", Env{Name: "test", Agent: "claude-code"}, false},
+		{"valid opencode", Env{Name: "test", Agent: "opencode", Workdir: "/tmp"}, false},
+		{"valid claude-code", Env{Name: "test", Agent: "claude-code", Workdir: "/tmp"}, false},
+		{"missing workdir", Env{Name: "test", Agent: "opencode"}, true},
 	}
 
 	for _, tt := range tests {

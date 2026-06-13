@@ -44,7 +44,7 @@ permissions:
   - `filesystem.edit` → `Edit(pattern)`
   - `bash` → `Bash(pattern)`
 - Write `<envDir>/claude-settings.json`
-- Pass via `--settings <path>` in `ActivateCommand()`
+- Pass via `--settings <path>` in Docker entrypoint
 - No Claude native sandbox settings in this iteration
 - `network` not translated to agent config
 

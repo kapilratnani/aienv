@@ -9,7 +9,7 @@
 ## Project Layout
 
 ```
-cmd/              — Thin Cobra commands (create, activate, list, show, edit, delete, init, docker)
+cmd/              — Thin Cobra commands (create, activate, list, show, edit, delete, docker)
 internal/         — Core logic (unexported packages)
   env/            — Env struct, YAML load/save/validate
   agents/         — Agent interface + per-agent config generation
@@ -19,7 +19,6 @@ internal/         — Core logic (unexported packages)
   registry/       — MCP registry and skills.sh API clients
   assets/         — Curated MCP/skill YAML loader (embed.FS + user overrides)
   docker/         — Docker sandbox container (build + run)
-  shell/          — Shell function install
   config/         — Path helpers
 curated/          — YAML-backed curated MCP and skill lists (embedded via embed.FS)
 examples/         — Reference env YAML files
@@ -29,20 +28,18 @@ docs/             — Documentation
 ## Activation Model
 
 - Environments stored at `~/.ai-envs/<name>/`
-- Shell function (`aienv()`) wraps the binary with `eval "$(aienv activate "$@")"` — foreground blocking
-- `OPENCODE_CONFIG` is exported to point to generated config, unset on exit
-- Docker mode bypasses `eval` entirely to preserve real TTY — calls `command aienv activate "$@"` directly
+- All activation launches a Docker container — no shell function, no eval
+- `OPENCODE_CONFIG` is set inside the container via `-e` flag
 
 ## Config Inheritance
 
 - Generated config contains **only** env-specific overrides (`mcp`, `model`, `instructions`, `permission`)
 - OpenCode's native config merging (global → `OPENCODE_CONFIG`) handles inheritance of all other keys
 - Global MCPs are disabled at the env level by emitting `"enabled": false` for servers not in the env
-- Same code path for Docker and non-Docker — no generation-time deep-copy
 
 ## Multi-Agent Architecture
 
-- `internal/agents/agent.go` defines the `Agent` interface (`Name()`, `GenerateFiles()`, `ActivateCommand()`)
+- `internal/agents/agent.go` defines the `Agent` interface (`Name()`, `GenerateFiles()`, `DockerConfig()`)
 - Global `Register()` / `Get()` registry for pluggable agents
 - New agents register via blank import in `agent_import.go`
 - Supported: OpenCode, Claude Code

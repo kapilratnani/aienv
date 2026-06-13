@@ -143,30 +143,67 @@ func buildClaudeSettings(perms *env.Permissions) claudeSettings {
 	return settings
 }
 
-func (a *agent) ActivateCommand(envDir string, e *env.Env) string {
-	var args []string
-	args = append(args, "claude")
-	args = append(args, "--mcp-config", filepath.Join(envDir, "mcp-config.json"))
-	args = append(args, "--append-system-prompt-file", filepath.Join(envDir, "CLAUDE.md"))
+func (a *agent) DockerConfig(envDir string, e *env.Env, sessionID string) (*agents.DockerConfig, error) {
+	home, _ := os.UserHomeDir()
+
+	mounts := []string{
+		fmt.Sprintf("%s:/workspace/.aienv:ro", envDir),
+	}
+
+	// Mount installed skill directories
+	for _, s := range e.Skills {
+		for _, prefix := range []string{".claude/skills"} {
+			dir := filepath.Join(home, prefix, s.Name)
+			if info, err := os.Stat(dir); err == nil && info.IsDir() {
+				containerPath := fmt.Sprintf("/home/user/%s/%s", prefix, s.Name)
+				mounts = append(mounts, fmt.Sprintf("%s:%s:ro", dir, containerPath))
+				break
+			}
+		}
+	}
+
+	// Mount .claude.json as read-only, will be copied to writable path on startup
+	claudeJSON := filepath.Join(home, ".claude.json")
+	if _, err := os.Stat(claudeJSON); err == nil {
+		mounts = append(mounts, fmt.Sprintf("%s:/home/user/.claude.json.ro:ro", claudeJSON))
+	}
+
+	claudeArgs := []string{
+		"claude",
+		"--mcp-config", "/workspace/.aienv/mcp-config.json",
+		"--append-system-prompt-file", "/workspace/.aienv/CLAUDE.md",
+		"--strict-mcp-config",
+	}
 
 	if e.Permissions != nil {
-		args = append(args, "--settings", filepath.Join(envDir, "claude-settings.json"))
+		claudeArgs = append(claudeArgs, "--settings", "/workspace/.aienv/claude-settings.json")
+	}
+
+	if e.Model != "" {
+		claudeArgs = append(claudeArgs, "--model", e.Model)
 	}
 
 	for _, rule := range e.Rules {
-		path := rule.Path
-		if !filepath.IsAbs(path) {
-			cwd, _ := os.Getwd()
-			path = filepath.Join(cwd, path)
+		if !filepath.IsAbs(rule.Path) {
+			claudeArgs = append(claudeArgs, "--append-system-prompt-file", filepath.Join("/workspace", rule.Path))
+		} else {
+			if _, err := os.Stat(rule.Path); err == nil {
+				mounts = append(mounts, fmt.Sprintf("%s:%s:ro", rule.Path, rule.Path))
+			}
+			claudeArgs = append(claudeArgs, "--append-system-prompt-file", rule.Path)
 		}
-		args = append(args, "--append-system-prompt-file", path)
 	}
 
-	args = append(args, "--strict-mcp-config")
-
-	if e.Model != "" {
-		args = append(args, "--model", e.Model)
+	// Wrap with sh -c to copy .claude.json.ro → .claude.json on startup
+	claudeCmd := strings.Join(claudeArgs, " ")
+	entrypoint := []string{
+		"aienv/sandbox:latest-claude",
+		"sh", "-c",
+		"cp /home/user/.claude.json.ro /home/user/.claude.json 2>/dev/null; exec " + claudeCmd,
 	}
 
-	return strings.Join(args, " ") + "\n"
+	return &agents.DockerConfig{
+		Mounts:     mounts,
+		Entrypoint: entrypoint,
+	}, nil
 }

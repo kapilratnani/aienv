@@ -42,7 +42,7 @@ For `~/.claude.json`: mount `:ro` at `.claude.json.ro`, then wrap the entrypoint
 - **Container**: `docker run --rm -it` — auto-cleanup on exit
 - **Volumes**: `defer docker volume rm -f` on normal exit
 - **Signals**: `signal.Notify` catches SIGINT/SIGTERM before Go exits, ensuring defer runs
-- **Image**: Auto-built on first `--docker` use, rebuild via `aienv docker build`
+- **Image**: Auto-built on first activate, rebuild via `aienv docker build`
 
 ## Per-Agent Dockerfiles
 

@@ -1,7 +1,6 @@
 package opencode
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -28,7 +27,7 @@ func TestBuildMCP(t *testing.T) {
 		}
 		global := map[string]any{
 			"mcp": map[string]any{
-				"github": map[string]any{},
+				"github":     map[string]any{},
 				"filesystem": map[string]any{},
 			},
 		}
@@ -221,28 +220,39 @@ func TestMergePermission(t *testing.T) {
 	})
 }
 
-func TestActivateCommand(t *testing.T) {
-	t.Run("bash default", func(t *testing.T) {
-		origShell := os.Getenv("SHELL")
-		os.Setenv("SHELL", "/bin/bash")
-		t.Cleanup(func() { os.Setenv("SHELL", origShell) })
-
+func TestDockerConfig(t *testing.T) {
+	t.Run("basic config", func(t *testing.T) {
 		a := &agent{}
-		cmd := a.ActivateCommand("/some/env/dir", &env.Env{Name: "test"})
-		if cmd == "" {
-			t.Fatal("expected non-empty command")
+		cfg, err := a.DockerConfig("/envs/test", &env.Env{Name: "test", Workdir: "/tmp"}, "sess-1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(cfg.Mounts) == 0 {
+			t.Error("expected at least one mount")
+		}
+		if len(cfg.EnvVars) != 1 || cfg.EnvVars[0] != "OPENCODE_CONFIG=/workspace/.aienv/opencode.json" {
+			t.Errorf("unexpected env vars: %v", cfg.EnvVars)
+		}
+		if len(cfg.Entrypoint) != 2 || cfg.Entrypoint[1] != "opencode" {
+			t.Errorf("unexpected entrypoint: %v", cfg.Entrypoint)
 		}
 	})
 
-	t.Run("fish shell", func(t *testing.T) {
-		origShell := os.Getenv("SHELL")
-		os.Setenv("SHELL", "/usr/bin/fish")
-		t.Cleanup(func() { os.Setenv("SHELL", origShell) })
-
+	t.Run("env dir mount", func(t *testing.T) {
 		a := &agent{}
-		cmd := a.ActivateCommand("/some/env/dir", &env.Env{Name: "test"})
-		if cmd == "" {
-			t.Fatal("expected non-empty command")
+		cfg, err := a.DockerConfig("/envs/test", &env.Env{Name: "test", Workdir: "/tmp"}, "sess-1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		found := false
+		for _, m := range cfg.Mounts {
+			if m == "/envs/test:/workspace/.aienv:ro" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected env dir mount, got %v", cfg.Mounts)
 		}
 	})
 }

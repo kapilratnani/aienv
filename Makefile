@@ -10,7 +10,7 @@ all: build
 build:
 	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BINARY) .
 
-install:
+install: build
 	$(GO) install $(GOFLAGS) .
 
 clean:

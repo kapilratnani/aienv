@@ -76,4 +76,4 @@ Audit Logs feature for `aienv`: record network requests and LLM cost per session
 ## Open Questions
 
 1. Ephemeral volume → data loss: is the wrapper-on-exit approach sufficient, or do we need a different mount strategy that preserves agent-native audit data?
-2. Non-Docker mode: how does cost extraction work without a container lifecycle to hook into? Background goroutine polling the DB?
+2. (resolved — Docker-only; container lifecycle provides the hook)

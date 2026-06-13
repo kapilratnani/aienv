@@ -639,35 +639,39 @@ func promptPrompt(e *env.Env) error {
 }
 
 func promptWorkdir(e *env.Env) error {
-	fmt.Print("Default working directory (absolute path, or '.' for current): ")
-	input, err := readLine()
-	if err != nil {
-		return err
-	}
-	input = strings.TrimSpace(input)
+	for {
+		fmt.Print("Working directory (absolute path, or '.' for current): ")
+		input, err := readLine()
+		if err != nil {
+			return err
+		}
+		input = strings.TrimSpace(input)
 
-	if input == "" {
-		fmt.Println("  Note: When no workdir is set, the environment will activate")
-		fmt.Println("  in whatever directory you run 'aienv <name>' from.")
+		if input == "" {
+			fmt.Println("  Workdir is required. Enter '.' to use the current directory.")
+			continue
+		}
+
+		expanded := env.ExpandTilde(input)
+		absPath, err := filepath.Abs(expanded)
+		if err != nil {
+			fmt.Printf("  Error resolving path: %v\n", err)
+			continue
+		}
+
+		info, err := os.Stat(absPath)
+		if err != nil {
+			fmt.Printf("  Directory %q does not exist.\n", absPath)
+			continue
+		}
+		if !info.IsDir() {
+			fmt.Printf("  %q is not a directory.\n", absPath)
+			continue
+		}
+
+		e.Workdir = absPath
 		return nil
 	}
-
-	expanded := env.ExpandTilde(input)
-	absPath, err := filepath.Abs(expanded)
-	if err != nil {
-		return fmt.Errorf("resolving path: %w", err)
-	}
-
-	info, err := os.Stat(absPath)
-	if err != nil {
-		return fmt.Errorf("directory %q does not exist", absPath)
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("%q is not a directory", absPath)
-	}
-
-	e.Workdir = absPath
-	return nil
 }
 
 func promptConfirm(e *env.Env) error {
@@ -683,11 +687,7 @@ func promptConfirm(e *env.Env) error {
 	if e.Prompt != "" {
 		fmt.Printf("  Prompt:      %s\n", e.Prompt)
 	}
-	if e.Workdir != "" {
-		fmt.Printf("  Workdir:     %s\n", e.Workdir)
-	} else {
-		fmt.Printf("  Workdir:     (current directory at activation time)\n")
-	}
+	fmt.Printf("  Workdir:     %s\n", e.Workdir)
 	mcpNames := sortedMCPKeys(e.MCPServers)
 	fmt.Printf("  MCPs:        %s\n", joinOrNone(mcpNames))
 	skillNames := make([]string, len(e.Skills))

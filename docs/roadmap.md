@@ -45,8 +45,7 @@
 - `workdir` field in the env schema (absolute path, stored in YAML)
 - Create flow prompts for workdir with tilde/relative path expansion and directory validation
 - Activation resolves workdir, passes it to GenerateFiles for rule path resolution
-- Non-Docker: prepends `cd <workdir>` to activation command (eval picks it up)
-- Docker: mounts workdir as `/workspace` (instead of CWD)
+- All activation: mounts workdir as `/workspace` (Docker-only)
 - `show` and create summary display the workdir setting
 - `ExpandTilde()` helper in `internal/env/env.go` for `~` expansion at both create and activation time
 

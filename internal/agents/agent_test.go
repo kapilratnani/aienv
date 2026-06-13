@@ -8,9 +8,11 @@ import (
 
 type mockAgent struct{}
 
-func (m *mockAgent) Name() string                           { return "mock" }
+func (m *mockAgent) Name() string                                              { return "mock" }
 func (m *mockAgent) GenerateFiles(e *env.Env, cwd string) ([]AgentFile, error) { return nil, nil }
-func (m *mockAgent) ActivateCommand(envDir string, e *env.Env) string          { return "" }
+func (m *mockAgent) DockerConfig(envDir string, e *env.Env, sessionID string) (*DockerConfig, error) {
+	return &DockerConfig{}, nil
+}
 
 func TestRegisterAndGet(t *testing.T) {
 	m := &mockAgent{}

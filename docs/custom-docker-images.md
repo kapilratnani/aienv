@@ -103,7 +103,7 @@ FROM eclipse-temurin:21-jdk
 RUN apt-get update && apt-get install -y maven
 ```
 
-On `aienv java-dev --docker`:
+On `aienv java-dev`:
 1. Hash `Dockerfile.java` content → `abc123`
 2. Check `docker image inspect aienv/env/java-dev:abc123` — miss
 3. Build base: `docker build -t aienv/env/java-dev:base-abc123` (pulls temurin, installs maven)

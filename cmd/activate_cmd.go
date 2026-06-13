@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,11 +19,9 @@ import (
 
 var activateCmd = &cobra.Command{
 	Use:   "activate <name>",
-	Short: "Print shell commands to activate an environment",
-	Long: `Prints shell commands that set up the environment for the current session.
-Used by the 'aienv' shell function with 'eval':
-
-  eval "$(aienv activate frontend-design)"`,
+	Short: "Activate an environment",
+	Long: `Activates an environment by launching the specified agent in a Docker container.
+All execution happens in an isolated Docker sandbox.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
@@ -66,19 +65,12 @@ Used by the 'aienv' shell function with 'eval':
 			e.Rules = append([]env.Rule{{Path: promptPath}}, e.Rules...)
 		}
 
-		cwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("getting cwd: %w", err)
+		if e.Workdir == "" {
+			return fmt.Errorf("workdir is not set for environment %q — recreate with 'aienv create %s' and provide a workdir", name, name)
 		}
-
-		workdir := cwd
-		if e.Workdir != "" {
-			wd := env.ExpandTilde(e.Workdir)
-			if info, err := os.Stat(wd); err == nil && info.IsDir() {
-				workdir = wd
-			} else {
-				fmt.Fprintf(os.Stderr, "  Warning: workdir %q not found, using current directory\n", e.Workdir)
-			}
+		workdir := env.ExpandTilde(e.Workdir)
+		if info, err := os.Stat(workdir); err != nil || !info.IsDir() {
+			return fmt.Errorf("workdir %q does not exist", workdir)
 		}
 
 		ag, err := agents.Get(e.Agent)
@@ -98,17 +90,11 @@ Used by the 'aienv' shell function with 'eval':
 			}
 		}
 
-		if dockerMode {
-			return docker.Run(e, workdir)
-		}
+		// Generate session ID for this activation
+		sessionID := fmt.Sprintf("aienv-%s-%d", e.Name, rand.Uint64())
 
-		activateCmd := ag.ActivateCommand(config.EnvDir(name), e)
-		if workdir != cwd {
-			activateCmd = fmt.Sprintf("cd %s\n%s", workdir, activateCmd)
-		}
-		fmt.Print(activateCmd)
-
-		return nil
+		// Run the agent in Docker container
+		return docker.Run(e, workdir, sessionID)
 	},
 }
 
@@ -167,6 +153,29 @@ func checkTrust(e *env.Env, name string) error {
 	}
 }
 
+func checkMCPEnvVars(e *env.Env) {
+	for name, srv := range e.MCPServers {
+		if len(srv.Env) == 0 {
+			continue
+		}
+		var missingVars []string
+		for key, val := range srv.Env {
+			if len(val) > 4 && val[:4] == "env:" {
+				envKey := val[4:]
+				if os.Getenv(envKey) == "" {
+					missingVars = append(missingVars, envKey)
+				}
+			} else if os.Getenv(key) == "" {
+				missingVars = append(missingVars, key)
+			}
+		}
+		if len(missingVars) > 0 {
+			fmt.Fprintf(os.Stderr, "  Warning: MCP server %q may not work — set %s\n",
+				name, strings.Join(missingVars, ", "))
+		}
+	}
+}
+
 func showMCPs(e *env.Env) {
 	if len(e.MCPServers) == 0 {
 		return
@@ -213,29 +222,6 @@ func showPermissions(e *env.Env) {
 		}
 		if len(e.Permissions.Network.Deny) > 0 {
 			fmt.Fprintf(os.Stderr, "    network.deny: %s\n", strings.Join(e.Permissions.Network.Deny, ", "))
-		}
-	}
-}
-
-func checkMCPEnvVars(e *env.Env) {
-	for name, srv := range e.MCPServers {
-		if len(srv.Env) == 0 {
-			continue
-		}
-		var missingVars []string
-		for key, val := range srv.Env {
-			if len(val) > 4 && val[:4] == "env:" {
-				envKey := val[4:]
-				if os.Getenv(envKey) == "" {
-					missingVars = append(missingVars, envKey)
-				}
-			} else if os.Getenv(key) == "" {
-				missingVars = append(missingVars, key)
-			}
-		}
-		if len(missingVars) > 0 {
-			fmt.Fprintf(os.Stderr, "  Warning: MCP server %q may not work — set %s\n",
-				name, strings.Join(missingVars, ", "))
 		}
 	}
 }

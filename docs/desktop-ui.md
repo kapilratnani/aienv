@@ -68,7 +68,7 @@ cmd/wails/
 
 ## Activation Model
 
-Non-Docker and Docker modes both use a shared `Terminal` interface.
+All activation uses a `Terminal` interface backed by Docker.
 
 ### Terminal Interface
 
@@ -90,12 +90,11 @@ Two implementations:
 | Implementation | Used By | Backend |
 |---|---|---|
 | `OSTerminal` | CLI (unchanged) | Wraps `os.Stdin`/`os.Stdout` |
-| `PTYTerminal` | GUI (new) | `creack/pty` — pipes to xterm.js via Wails events |
+| `PTYTerminal` | GUI (new) | Pipes docker stdio to xterm.js via Wails events |
 
-### Docker vs Non-Docker Terminal Handling
+### Terminal Handling
 
-- **Docker mode**: `docker run -i` (no `-t`), pipe stdio via `io.Pipe()`. `Resize()` is a no-op. No host-side PTY — Docker handles terminal internally.
-- **Non-Docker mode**: `creack/pty` wrapping agent binary. `Resize()` calls `pty.Resize()`.
+- `docker run -i` (no `-t`), pipe stdio via `io.Pipe()`. `Resize()` is a no-op. No host-side PTY — Docker handles terminal internally.
 
 ### GUI Activation Flow
 
@@ -108,7 +107,6 @@ User clicks "Activate" on env card
 3. Navigate to TerminalView
 4. Backend:
    a. Docker: allocate io.Pipe(), set cmd.Dir = workdir, run docker -i
-   b. Non-Docker: allocate creack/pty, set cmd.Dir = workdir, spawn agent
 5. Stream: Stdout → events.Emit("terminal:output", chunk)
    Frontend: xterm.js writes chunk
 6. Input: xterm.js onKey → SendTerminalInput(data) → Stdin
@@ -135,7 +133,7 @@ New shared package. Extracts terminal abstraction from `internal/docker/sandbox.
 |---|---|
 | **NEW** `internal/terminal/` | `Terminal` interface + `OSTerminal` + `PTYTerminal` |
 | `internal/docker/sandbox.go` | `Run()` refactored to accept `terminal.Terminal` |
-| `internal/agents/agent.go` | `ActivateCommand()` used to construct command string; GUI wraps in PTY |
+| `internal/agents/agent.go` | `DockerConfig()` used to construct docker run arguments |
 
 ### What Stays the Same
 
@@ -286,10 +284,10 @@ Full dark mode from day one. Dark terminal theme + dark app UI. Tailwind `darkMo
 
 ### Phase 3: Embedded Terminal
 1. `Terminal` interface + `OSTerminal` extraction
-2. `PTYTerminal` with creack/pty (non-Docker); `io.Pipe()` variant for Docker
+2. `PTYTerminal` with `io.Pipe()` variant for Docker stdio
 3. Refactor `docker.Run()` to accept `terminal.Terminal`
 4. xterm.js integration (TerminalPanel, useTerminal composable)
-5. Activation flow in GUI (Docker + non-Docker)
+5. Activation flow in GUI (Docker-only)
 6. Session lifecycle (start, stream, resize, exit)
 
 ### Phase 4: Audit Viewer
@@ -302,7 +300,7 @@ Full dark mode from day one. Dark terminal theme + dark app UI. Tailwind `darkMo
 
 | # | Question | Decision |
 |---|---|---|
-| Q1 | PTY for Docker mode? | No — `creack/pty` only for non-Docker. Docker uses `io.Pipe()` on stdio. |
+| Q1 | PTY for Docker mode? | No — Docker uses `io.Pipe()` on stdio. |
 | Q2 | Shell function bypass? | Yes — GUI constructs activation commands internally, sets `cmd.Dir = workdir`. |
 | Q3 | Windows? | Deferred to v2 (Linux + macOS only). |
 | Q4 | Docker build UX? | Build indicator badge + manual "Build" button on env detail. Auto-trigger on activate. Spinner, no detailed progress v1. |
