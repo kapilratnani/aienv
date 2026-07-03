@@ -143,7 +143,7 @@ func generateDockerfile(e *env.Env) string {
 	return b.String()
 }
 
-func Run(e *env.Env) error {
+func Run(e *env.Env, exitMode bool) error {
 	if err := Check(); err != nil {
 		return err
 	}
@@ -179,8 +179,11 @@ func Run(e *env.Env) error {
 		fmt.Fprintf(os.Stderr, "Audit:   %s\n", auditDir)
 	}
 
-	args := []string{
-		"run", "--rm", "-it",
+	args := []string{"run", "--rm"}
+	if exitMode {
+		args = append(args, "--attach=stdout", "--attach=stderr")
+	} else {
+		args = append(args, "-it")
 	}
 
 	// Mounts from env spec
@@ -244,10 +247,11 @@ func Run(e *env.Env) error {
 		args = append(args, "-e", "NO_PROXY=localhost,127.0.0.1")
 	}
 
-	// TTY environment passthrough
-	for _, key := range []string{"TERM", "COLORTERM", "LANG", "LC_ALL", "LC_CTYPE"} {
-		if val := os.Getenv(key); val != "" {
-			args = append(args, "-e", fmt.Sprintf("%s=%s", key, val))
+	if !exitMode {
+		for _, key := range []string{"TERM", "COLORTERM", "LANG", "LC_ALL", "LC_CTYPE"} {
+			if val := os.Getenv(key); val != "" {
+				args = append(args, "-e", fmt.Sprintf("%s=%s", key, val))
+			}
 		}
 	}
 	args = append(args, "-e", "HOME=/home/agent")
@@ -256,11 +260,16 @@ func Run(e *env.Env) error {
 	entrypoint := append([]string{tag}, e.Agent.Command...)
 	entrypoint = append(entrypoint, e.Agent.Args...)
 	args = append(args, entrypoint...)
-	fmt.Printf("%v\n", args)
+	fmt.Printf("%v", args)
 	cmd := exec.Command("docker", args...)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	if exitMode {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	} else {
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("sandbox exited with error: %w", err)

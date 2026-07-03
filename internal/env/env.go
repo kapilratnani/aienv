@@ -19,12 +19,13 @@ type EnvMeta struct {
 }
 
 type AgentConfig struct {
-	Install    []string          `yaml:"install"`
-	Command    []string          `yaml:"command"`
-	Args       []string          `yaml:"args,omitempty"`
-	PromptFlag string            `yaml:"prompt_flag,omitempty"`
-	Env        map[string]string `yaml:"env,omitempty"`
-	Mounts     []Mount           `yaml:"mounts"`
+	Install        []string          `yaml:"install"`
+	Command        []string          `yaml:"command"`
+	Args           []string          `yaml:"args,omitempty"`
+	PromptFlag     string            `yaml:"prompt_flag,omitempty"`
+	ExitSubcommand string            `yaml:"exit_subcommand,omitempty"`
+	Env            map[string]string `yaml:"env,omitempty"`
+	Mounts         []Mount           `yaml:"mounts"`
 }
 
 type Mount struct {

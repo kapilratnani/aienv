@@ -119,6 +119,65 @@ func equal(t *testing.T, got, want []string) {
 	}
 }
 
+func TestExitSubcommandYAML(t *testing.T) {
+	e := &Env{
+		Meta:  EnvMeta{Name: "test"},
+		Agent: AgentConfig{Command: []string{"opencode"}, ExitSubcommand: "run", PromptFlag: "-p"},
+	}
+
+	data, err := yaml.Marshal(e)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	var got Env
+	if err := yaml.Unmarshal(data, &got); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+
+	if got.Agent.ExitSubcommand != "run" {
+		t.Errorf("ExitSubcommand = %q, want %q", got.Agent.ExitSubcommand, "run")
+	}
+}
+
+func TestExitSubcommandEmptyOmitted(t *testing.T) {
+	e := &Env{
+		Meta:  EnvMeta{Name: "test"},
+		Agent: AgentConfig{Command: []string{"opencode"}},
+	}
+
+	data, err := yaml.Marshal(e)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	if containsString(string(data), "exit_subcommand") {
+		t.Error("expected exit_subcommand to be omitted from YAML when empty")
+	}
+}
+
+func TestExitSubcommandLoad(t *testing.T) {
+	yml := `env:
+  name: test
+agent:
+  command: [opencode]
+  prompt_flag: "-p"
+  exit_subcommand: "run"
+  mounts:
+    - source: /tmp
+      target: /workspace
+`
+
+	var e Env
+	if err := yaml.Unmarshal([]byte(yml), &e); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+
+	if e.Agent.ExitSubcommand != "run" {
+		t.Errorf("ExitSubcommand = %q, want %q", e.Agent.ExitSubcommand, "run")
+	}
+}
+
 func containsString(s, substr string) bool {
 	if len(s) < len(substr) {
 		return false

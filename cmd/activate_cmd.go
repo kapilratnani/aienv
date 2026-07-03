@@ -17,6 +17,7 @@ var (
 	worktreeBaseFlag string
 	worktreeKeepFlag bool
 	promptFlag       string
+	exitFlag         bool
 )
 
 var upCmd = &cobra.Command{
@@ -28,12 +29,12 @@ and permissions.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
-		return runEnv(name, promptFlag)
+		return runEnv(name, promptFlag, exitFlag)
 	},
 }
 
 // runEnv is shared by "up" subcommand and positional activation.
-func runEnv(name string, prompt string) error {
+func runEnv(name string, prompt string, exitMode bool) error {
 	if err := config.IsValidName(name); err != nil {
 		return fmt.Errorf("invalid environment name %q: %w", name, err)
 	}
@@ -43,7 +44,14 @@ func runEnv(name string, prompt string) error {
 		return fmt.Errorf("loading environment %q: %w", name, err)
 	}
 
-	e.ApplyPrompt(prompt)
+	if exitMode && e.Agent.ExitSubcommand != "" {
+		if prompt != "" {
+			e.Agent.Args = append([]string{e.Agent.ExitSubcommand}, e.Agent.Args...)
+			e.Agent.Args = append(e.Agent.Args, prompt)
+		}
+	} else {
+		e.ApplyPrompt(prompt)
+	}
 
 	// Resolve mount sources
 	for i := range e.Agent.Mounts {
@@ -100,7 +108,7 @@ func runEnv(name string, prompt string) error {
 		}
 	}
 
-	return docker.Run(e)
+	return docker.Run(e, exitMode)
 }
 
 // Positional activation: `aienv <name>`
@@ -109,7 +117,7 @@ var activateCmd = &cobra.Command{
 	Short: "Activate an environment",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runEnv(args[0], "")
+		return runEnv(args[0], "", false)
 	},
 }
 
@@ -121,4 +129,5 @@ func init() {
 	upCmd.Flags().StringVar(&worktreeBaseFlag, "worktree-base", "", "Base branch for the worktree (default: auto-detect from remote)")
 	upCmd.Flags().BoolVar(&worktreeKeepFlag, "worktree-keep", false, "Keep worktree after session exit")
 	upCmd.Flags().StringVarP(&promptFlag, "prompt", "p", "", "Send a prompt to the agent on startup (appended to agent.args; uses agent.prompt_flag if set in env config)")
+	upCmd.Flags().BoolVarP(&exitFlag, "exit", "x", false, "Run in non-interactive mode: agent does the work and exits (uses agent.exit_subcommand if set)")
 }
