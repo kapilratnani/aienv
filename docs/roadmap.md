@@ -24,6 +24,13 @@
 - [ ] Repo-local `.aienv.yaml` discovery (`aienv up` in project dirs)
 - [ ] Permission signing via GPG/Sigstore
 
+## V2.5: Git Worktree Isolation
+
+- [ ] `aienv up --worktree <branch>` — creates task-specific git worktree, mounts into sandbox, cleans up on exit
+- [ ] Host-side git dependency checking before activation
+- [ ] Pre-flight worktree reuse / stale detection
+- [ ] Signal-based cleanup (SIGINT/SIGTERM removes worktree)
+
 ## V3: Desktop UI
 
 - Wails-based desktop app at `cmd/wails/` — separate binary, reuses `internal/` packages

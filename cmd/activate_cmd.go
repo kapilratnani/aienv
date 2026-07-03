@@ -3,11 +3,19 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/kapilratnani/aienv/internal/config"
 	"github.com/kapilratnani/aienv/internal/docker"
 	"github.com/kapilratnani/aienv/internal/env"
 	"github.com/spf13/cobra"
+)
+
+var (
+	worktreeFlag     string
+	worktreeBaseFlag string
+	worktreeKeepFlag bool
 )
 
 var upCmd = &cobra.Command{
@@ -42,6 +50,39 @@ func runEnv(name string) error {
 		}
 	}
 
+	// Worktree setup
+	if worktreeFlag != "" {
+		if len(e.Agent.Mounts) == 0 {
+			return fmt.Errorf("cannot create worktree: no workdir mount configured")
+		}
+
+		mounts, cleanup, err := env.SetupWorktree(&env.WorktreeConfig{
+			RepoPath:   e.Agent.Mounts[0].Source,
+			Branch:     worktreeFlag,
+			BaseBranch: worktreeBaseFlag,
+			Keep:       worktreeKeepFlag,
+		})
+		if err != nil {
+			return err
+		}
+
+		e.Agent.Mounts[0].Source = mounts[0].Source
+		e.Agent.Mounts[0].Writable = mounts[0].Writable
+		e.Agent.Mounts = append(e.Agent.Mounts, mounts[1])
+
+		if cleanup != nil {
+			defer cleanup()
+
+			sigCh := make(chan os.Signal, 1)
+			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+			go func() {
+				<-sigCh
+				cleanup()
+				os.Exit(1)
+			}()
+		}
+	}
+
 	// Trust prompt before activation
 	needed, err := docker.NeedsTrustPrompt(e)
 	if err != nil {
@@ -72,4 +113,8 @@ var activateCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(upCmd)
 	rootCmd.AddCommand(activateCmd)
+
+	upCmd.Flags().StringVarP(&worktreeFlag, "worktree", "w", "", "Create a git worktree for the given branch and activate into it")
+	upCmd.Flags().StringVar(&worktreeBaseFlag, "worktree-base", "", "Base branch for the worktree (default: auto-detect from remote)")
+	upCmd.Flags().BoolVar(&worktreeKeepFlag, "worktree-keep", false, "Keep worktree after session exit")
 }

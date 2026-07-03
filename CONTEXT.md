@@ -32,3 +32,6 @@ A permissions mode where the network proxy logs all hosts contacted and suggests
 
 **Session**:
 A single invocation of `aienv up`. Each activation creates a new container with a unique session ID. Concurrent activations produce separate containers.
+
+**Worktree**:
+A git worktree — a linked checkout of a Git repository that shares the repository's `.git` directory with the parent working tree. aienv can create a worktree from the env's `workdir`, mount it into the sandbox as the agent's working directory, run the agent, and clean it up on session exit. Used for isolating agent work to a task-specific branch.
