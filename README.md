@@ -22,7 +22,8 @@ aienv my-env             # build image + launch sandbox
 | Command | Function |
 |---------|----------|
 | `aienv create <name>` | Interactive environment creation |
-| `aienv <name>` / `aienv up <name>` | Build image if needed, launch sandbox |
+| `aienv up <name>` / `aienv <name>` | Build image if needed, launch sandbox |
+| `aienv up <name> -p "prompt"` | Launch sandbox and send prompt to agent |
 | `aienv list` | List all environments |
 | `aienv show <name>` | Show environment details |
 | `aienv edit <name>` | Edit env YAML in $EDITOR |
@@ -42,6 +43,7 @@ agent:
   install:
     - npm install -g opencode-ai
   command: [opencode]
+  prompt_flag: "-p"          # optional: flag to use when sending prompt via aienv up -p "..."
   mounts:
     - source: ~/project
       target: /workspace

@@ -28,7 +28,7 @@ black boxes — aienv never generates or modifies agent config files.
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 0 {
-			return runEnv(args[0])
+			return runEnv(args[0], "")
 		}
 		return cmd.Help()
 	},
@@ -40,7 +40,7 @@ func Execute() {
 	if len(args) > 0 {
 		_, _, err := rootCmd.Find(args)
 		if err != nil {
-			if e := runEnv(args[0]); e != nil {
+			if e := runEnv(args[0], ""); e != nil {
 				fmt.Fprintln(os.Stderr, e)
 				os.Exit(1)
 			}

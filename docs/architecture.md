@@ -55,6 +55,7 @@ agent:
   install:
     - npm install -g opencode-ai
   command: [opencode]
+  prompt_flag: "-p"          # optional: flag for aienv up --prompt/-p to send prompt to agent
   mounts:
     - source: ~/project
       target: /workspace

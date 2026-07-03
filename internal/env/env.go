@@ -19,11 +19,12 @@ type EnvMeta struct {
 }
 
 type AgentConfig struct {
-	Install []string          `yaml:"install"`
-	Command []string          `yaml:"command"`
-	Args    []string          `yaml:"args,omitempty"`
-	Env     map[string]string `yaml:"env,omitempty"`
-	Mounts  []Mount           `yaml:"mounts"`
+	Install    []string          `yaml:"install"`
+	Command    []string          `yaml:"command"`
+	Args       []string          `yaml:"args,omitempty"`
+	PromptFlag string            `yaml:"prompt_flag,omitempty"`
+	Env        map[string]string `yaml:"env,omitempty"`
+	Mounts     []Mount           `yaml:"mounts"`
 }
 
 type Mount struct {
@@ -63,6 +64,17 @@ func ExpandTilde(path string) string {
 		return filepath.Join(home, path[2:])
 	}
 	return path
+}
+
+func (e *Env) ApplyPrompt(prompt string) {
+	if prompt == "" {
+		return
+	}
+	if e.Agent.PromptFlag != "" {
+		e.Agent.Args = append(e.Agent.Args, e.Agent.PromptFlag, prompt)
+	} else {
+		e.Agent.Args = append(e.Agent.Args, prompt)
+	}
 }
 
 func (m *Mount) ResolveSource() string {

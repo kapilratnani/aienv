@@ -16,6 +16,7 @@ var (
 	worktreeFlag     string
 	worktreeBaseFlag string
 	worktreeKeepFlag bool
+	promptFlag       string
 )
 
 var upCmd = &cobra.Command{
@@ -27,12 +28,12 @@ and permissions.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
-		return runEnv(name)
+		return runEnv(name, promptFlag)
 	},
 }
 
 // runEnv is shared by "up" subcommand and positional activation.
-func runEnv(name string) error {
+func runEnv(name string, prompt string) error {
 	if err := config.IsValidName(name); err != nil {
 		return fmt.Errorf("invalid environment name %q: %w", name, err)
 	}
@@ -41,6 +42,8 @@ func runEnv(name string) error {
 	if err != nil {
 		return fmt.Errorf("loading environment %q: %w", name, err)
 	}
+
+	e.ApplyPrompt(prompt)
 
 	// Resolve mount sources
 	for i := range e.Agent.Mounts {
@@ -106,7 +109,7 @@ var activateCmd = &cobra.Command{
 	Short: "Activate an environment",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runEnv(args[0])
+		return runEnv(args[0], "")
 	},
 }
 
@@ -117,4 +120,5 @@ func init() {
 	upCmd.Flags().StringVarP(&worktreeFlag, "worktree", "w", "", "Create a git worktree for the given branch and activate into it")
 	upCmd.Flags().StringVar(&worktreeBaseFlag, "worktree-base", "", "Base branch for the worktree (default: auto-detect from remote)")
 	upCmd.Flags().BoolVar(&worktreeKeepFlag, "worktree-keep", false, "Keep worktree after session exit")
+	upCmd.Flags().StringVarP(&promptFlag, "prompt", "p", "", "Send a prompt to the agent on startup (appended to agent.args; uses agent.prompt_flag if set in env config)")
 }
