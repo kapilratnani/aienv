@@ -25,7 +25,6 @@
         <li><a href="#features">Features</a></li>
         <li><a href="#quickstart">Quick&nbsp;Start</a></li>
         <li><a href="#recipes">Recipes</a></li>
-        <li><a href="#how-it-works">How&nbsp;it&nbsp;Works</a></li>
       </ul>
     </div>  </nav>
 
@@ -308,68 +307,6 @@
       <span class="keyword">target</span>: /workspace
       <span class="keyword">writable</span>: true</code></pre>
           </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- How it Works -->
-  <section id="how-it-works">
-    <h2 class="section-title fade-in">How it Works</h2>
-    <div class="flow-diagram">
-      <div class="flow-step fade-in">
-        <div class="flow-number">1</div>
-        <div class="flow-content">
-          <h4>Load Environment</h4>
-          <p>Load <code>~/.local/share/aienv/my-env/env.yaml</code></p>
-        </div>
-      </div>
-      
-      <div class="flow-step fade-in">
-        <div class="flow-number">2</div>
-        <div class="flow-content">
-          <h4>Compute Hash</h4>
-          <p>SHA-256 hash → check Docker image cache</p>
-        </div>
-      </div>
-      
-      <div class="flow-step fade-in">
-        <div class="flow-number">3</div>
-        <div class="flow-content">
-          <h4>Build Image</h4>
-          <p>Auto-generate & build Dockerfile if missing</p>
-        </div>
-      </div>
-      
-      <div class="flow-step fade-in">
-        <div class="flow-number">4</div>
- <div class="flow-content">
-          <h4>Start Proxy</h4>
-          <p>Network proxy starts on random host port</p>
-        </div>
-      </div>
-      
-      <div class="flow-step fade-in">
-        <div class="flow-number">5</div>
-        <div class="flow-content">
-          <h4>Spawn Container</h4>
-          <p>Container with mounts, env vars, HTTP_PROXY, and agent command</p>
-        </div>
-      </div>
-      
-      <div class="flow-step fade-in">
-        <div class="flow-number">6</div>
-        <div class="flow-content">
-          <h4>Agent Runs</h4>
-          <p>Agent runs inside — all network traffic filtered through proxy. Audit logs written in real-time.</p>
-        </div>
-      </div>
-      
-      <div class="flow-step fade-in">
-        <div class="flow-number">7</div>
-        <div class="flow-content">
-          <h4>Cleanup</h4>
-          <p>Container auto-removed, proxy stopped, audit logs persisted</p>
         </div>
       </div>
     </div>
