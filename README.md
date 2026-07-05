@@ -89,7 +89,7 @@ audit:
 
 ## 📚 Ready-to-Use Recipes
 
-### Start Simple
+### 🌻 Start Simple
 ```yaml
 env:
   name: my-coding-env
