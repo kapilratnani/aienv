@@ -19,11 +19,11 @@ go install github.com/kapilratnani/aienv@latest
 # Create an isolated environment for Claude Code
 aienv create claude-dev
 
-# Launch the sandbox
+# Launch the agent in sandbox with access to TUI
 aienv up claude-dev
 
-# Send a prompt directly (one-shot mode)
-aienv up claude-dev -p "Refactor the auth module to use JWT" -x
+# Send a prompt directly with no access to TUI (one-shot mode. Agent does the job and exits)
+aienv up claude-dev -p "Refactor the auth module to use JWT and create the PR using gh cli" -x
 ```
 
 ---
@@ -60,10 +60,9 @@ agent:
   install:
     - npm install -g @anthropic-ai/claude-code
   command: [claude]
-  prompt_flag: "-p"           # flag for -p "prompt" mode
-  exit_subcommand: "run"      # subcommand for -x one-shot mode
   env:
     ANTHROPIC_API_KEY: "env:ANTHROPIC_API_KEY"  # passthrough from host
+    GITHUB_TOKEN: "env:GITHUB_TOKEN" # to create pr after the work is done
   mounts:
     - source: ~/projects/my-app
       target: /workspace
@@ -90,7 +89,35 @@ audit:
 
 ## 📚 Ready-to-Use Recipes
 
-### 🔧 Claude Code (Anthropic)
+### Start Simple
+```yaml
+env:
+  name: my-coding-env
+  description: coding env for my project
+
+agent:
+  install:
+    - npm install -g opencode-ai
+  command:
+    - opencode
+  mounts:
+    - source: /path/to/your/project
+      target: /workspace
+      writable: true
+```
+
+invoke to work with TUI
+
+```bash
+$ aienv up my-coding-env
+```
+
+One shot mode with a prompt. Does the job and exits.
+```bash
+$ aienv up my-coding-env -p "fix login bug in github issue #12 and create pr. Use gh cli" -x
+```
+
+### 🔧 Claude Code
 
 ```yaml
 env:
@@ -110,6 +137,10 @@ agent:
     - source: ~/.claude
       target: ~/.claude
       writable: true
+    - source: ~/.agents/skills/caveman
+      target: ~/.agents/skills/caveman
+    - source: ~/.agents/skills/agent-browser
+      target: ~/.agents/skills/agent-browser
 
 permissions:
   network:
@@ -123,10 +154,12 @@ audit:
 **Launch it:**
 ```bash
 aienv up claude-dev
-aienv up claude-dev -p "Refactor auth module to use JWT"
+aienv up claude-dev -p "Refactor auth module to use JWT" # with TUI
+# or
+aienv up claude-dev -p "Refactor auth module to use JWT. create pr with gh cli" -x
 ```
 
-### 🎯 OpenCode (Open Source)
+### 🎯 OpenCode 
 
 ```yaml
 env:
@@ -137,6 +170,8 @@ agent:
   install:
     - npm install -g opencode-ai
   command: [opencode]
+  prompt_flag: "--prompt" # optional - if agent has a custom flag for initial prompt
+  exit_subcommand: "run" # optional - subcommand for one shot mode
   args: [--model, opencode/deepseek-v4-flash-free]
   mounts:
     - source: /home/you/projects/aienv
@@ -154,7 +189,7 @@ audit:
   capture: [network]
 ```
 
-### 🤖 Pi (Terminal Agent)
+### 🤖 Pi
 
 ```yaml
 env:
@@ -181,7 +216,7 @@ audit:
 
 ### 🎨 Bring Your Own
 
-Any CLI-based agent works — just change `agent.install` and `agent.command`. Zero Go code changes.
+Any CLI-based agent works — just change `agent.install` and `agent.command`. Zero code changes.
 
 ---
 
@@ -271,7 +306,7 @@ make vet
 - Isolating agents across different projects
 - Enforcing network policies (which APIs can agents call?)
 - Keeping detailed audit trails for compliance
-- Working with multiple AI tools (Claude, OpenCode, Cursor)
+- Working with multiple AI tools (Claude, OpenCode, Codex)
 - Testing agents without risking your host
 
 ---
