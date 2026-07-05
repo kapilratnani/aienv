@@ -1,6 +1,6 @@
-# aienv
+# AIenv
 
-> The permission and isolation layer for AI coding agents.
+> Bring your own AI agent. AIenv provides the secure runtime.
 
 AI coding setups become chaotic fast. Different projects need different tools,
 credentials, and configs. `aienv` fixes this with reproducible Docker sandboxes
