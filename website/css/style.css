@@ -1,13 +1,17 @@
 :root {
-  --bg-primary: #0a0a0f;
-  --bg-secondary: #14141f;
-  --bg-tertiary: #1c1c2e;
-  --text-primary: #e0e0e0;
-  --text-secondary: #a0a0b0;
-  --text-muted: #606070;
-  --accent-green: #00ff00;
-  --accent-cyan: #00ffff;
-  --accent-yellow: #ffff00;
+  /* Logo-inspired color palette */
+  --bg-primary: #0F1729;
+  --bg-secondary: #1A2332;
+  --bg-tertiary: #243044;
+  --text-primary: #FFFFFF;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --accent-teal: #00B4D8;
+  --accent-cyan: #22D3EE;
+  --accent-amber: #D4A84B;
+  --accent-green: #00B4D8;
+  --accent-yellow: #D4A84B;
+  --border-color: rgba(0, 180, 216, 0.15);
   --font-mono: 'Fira Code', 'JetBrains Mono', monospace;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -48,7 +52,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-green);
+  background: var(--accent-teal);
 }
 
 nav {
@@ -56,11 +60,11 @@ nav {
   top: 0;
   left: 0;
   right: 0;
-  background: rgba(10, 10, 15, 0.9);
+  background: rgba(15, 23, 41, 0.95);
   backdrop-filter: blur(10px);
   z-index: 1000;
   padding: 1rem 2rem;
-  border-bottom: 1px solid rgba(0, 255, 0, 0.1);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .nav-container {
@@ -100,7 +104,7 @@ nav {
 }
 
 .nav-links a:hover {
-  color: var(--accent-green);
+  color: var(--accent-teal);
 }
 
 .nav-toggle {
@@ -129,7 +133,7 @@ nav {
   left: 0;
   right: 0;
   bottom: 0;
-  background: radial-gradient(circle at 50% 50%, rgba(0, 255, 0, 0.05) 0%, transparent 50%);
+  background: radial-gradient(circle at 50% 50%, rgba(0, 180, 216, 0.08) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -157,7 +161,7 @@ nav {
   font-size: clamp(3rem, 8vw, 6rem);
   font-weight: 700;
   margin-bottom: 1rem;
-  background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+  background: linear-gradient(135deg, var(--accent-teal), var(--accent-cyan));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -173,11 +177,12 @@ nav {
 }
 
 .hero-tagline code {
-  background: rgba(0, 255, 0, 0.1);
+  background: rgba(0, 180, 216, 0.15);
   padding: 0.2rem 0.4rem;
   border-radius: 4px;
   font-family: var(--font-mono);
   font-size: 0.9rem;
+  color: var(--accent-teal);
 }
 
 .install-command {
@@ -185,7 +190,7 @@ nav {
   align-items: center;
   gap: 1rem;
   background: var(--bg-secondary);
-  border: 1px solid rgba(0, 255, 0, 0.2);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 1rem 1.5rem;
   font-family: var(--font-mono);
@@ -203,7 +208,7 @@ nav {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(0, 255, 0, 0.05), transparent);
+  background: linear-gradient(90deg, transparent, rgba(0, 180, 216, 0.08), transparent);
   animation: shimmer 3s infinite;
 }
 
@@ -213,7 +218,7 @@ nav {
 }
 
 .install-command code {
-  color: var(--accent-green);
+  color: var(--accent-teal);
   white-space: nowrap;
 }
 
@@ -228,7 +233,7 @@ nav {
 }
 
 .install-command button:hover {
-  color: var(--accent-green);
+  color: var(--accent-teal);
 }
 
 .github-btn {
@@ -247,8 +252,8 @@ nav {
 
 .github-btn:hover {
   background: var(--bg-secondary);
-  border-color: var(--accent-green);
-  color: var(--accent-green);
+  border-color: var(--accent-teal);
+  color: var(--accent-teal);
 }
 
 section {
@@ -262,7 +267,7 @@ section {
   font-size: 2rem;
   margin-bottom: 3rem;
   text-align: center;
-  color: var(--accent-green);
+  color: var(--accent-teal);
 }
 
 .section-title::before {
@@ -278,7 +283,7 @@ section {
 
 .feature-card {
   background: var(--bg-secondary);
-  border: 1px solid rgba(0, 255, 0, 0.1);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 1.5rem;
   transition: all 0.3s ease;
@@ -293,7 +298,7 @@ section {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan));
+  background: linear-gradient(90deg, var(--accent-teal), var(--accent-cyan));
   transform: scaleX(0);
   transition: transform 0.3s ease;
 }
@@ -303,9 +308,9 @@ section {
 }
 
 .feature-card:hover {
-  border-color: rgba(0, 255, 0, 0.3);
+  border-color: rgba(0, 180, 216, 0.4);
   transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(0, 255, 0, 0.05);
+  box-shadow: 0 10px 30px rgba(0, 180, 216, 0.1);
 }
 
 .feature-icon {
@@ -318,7 +323,7 @@ section {
   font-family: var(--font-mono);
   font-size: 1.1rem;
   margin-bottom: 0.5rem;
-  color: var(--accent-cyan);
+  color: var(--accent-teal);
 }
 
 .feature-card p {
@@ -343,7 +348,7 @@ section {
   font-family: var(--font-mono);
   font-size: 2rem;
   font-weight: 700;
-  color: var(--accent-green);
+  color: var(--accent-teal);
   opacity: 0.5;
   line-height: 1;
   min-width: 40px;
@@ -364,7 +369,7 @@ section {
 
 .code-block {
   background: var(--bg-tertiary);
-  border: 1px solid rgba(0, 255, 0, 0.1);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   overflow: hidden;
   position: relative;
@@ -376,7 +381,7 @@ section {
   align-items: center;
   padding: 0.5rem 1rem;
   background: rgba(0, 0, 0, 0.3);
-  border-bottom: 1px solid rgba(0, 255, 0, 0.05);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .code-header span {
@@ -395,7 +400,7 @@ section {
 }
 
 .code-header button:hover {
-  color: var(--accent-green);
+  color: var(--accent-teal);
 }
 
 .code-block pre {
@@ -411,9 +416,9 @@ section {
 }
 
 .code-block .comment { color: var(--text-muted); }
-.code-block .keyword { color: var(--accent-cyan); }
-.code-block .string { color: var(--accent-green); }
-.code-block .prompt { color: var(--accent-yellow); user-select: none; }
+.code-block .keyword { color: var(--accent-teal); }
+.code-block .string { color: var(--accent-amber); }
+.code-block .prompt { color: var(--accent-amber); user-select: none; }
 
 .recipes-list {
   display: flex;
@@ -423,7 +428,7 @@ section {
 
 .recipe-item {
   background: var(--bg-secondary);
-  border: 1px solid rgba(0, 255, 0, 0.1);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -438,13 +443,13 @@ section {
 }
 
 .recipe-header:hover {
-  background: rgba(0, 255, 0, 0.02);
+  background: rgba(0, 180, 216, 0.05);
 }
 
 .recipe-header h3 {
   font-family: var(--font-mono);
   font-size: 1rem;
-  color: var(--accent-cyan);
+  color: var(--accent-teal);
 }
 
 .recipe-toggle {
@@ -488,7 +493,7 @@ section {
   align-items: flex-start;
   padding: 1.5rem;
   background: var(--bg-secondary);
-  border-left: 3px solid var(--accent-green);
+  border-left: 3px solid var(--accent-teal);
   margin-bottom: 0;
   position: relative;
   transition: all 0.3s ease;
@@ -496,7 +501,7 @@ section {
 
 .flow-step:hover {
   background: var(--bg-tertiary);
-  border-left-color: var(--accent-cyan);
+  border-left-color: var(--accent-teal);
 }
 
 .flow-step::after {
@@ -504,7 +509,7 @@ section {
   position: absolute;
   bottom: -1.5rem;
   left: 1rem;
-  color: var(--accent-green);
+  color: var(--accent-teal);
   font-size: 1.5rem;
   opacity: 0.5;
 }
@@ -517,7 +522,7 @@ section {
   font-family: var(--font-mono);
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--accent-green);
+  color: var(--accent-teal);
   min-width: 40px;
   text-align: center;
 }
@@ -535,15 +540,16 @@ section {
 }
 
 .flow-content code {
-  background: rgba(0, 255, 0, 0.1);
+  background: rgba(0, 180, 216, 0.15);
   padding: 0.2rem 0.4rem;
   border-radius: 4px;
   font-family: var(--font-mono);
   font-size: 0.85rem;
+  color: var(--accent-teal);
 }
 
 footer {
-  border-top: 1px solid rgba(0, 255, 0, 0.1);
+  border-top: 1px solid var(--border-color);
   padding: 3rem 2rem;
   text-align: center;
 }
@@ -563,7 +569,7 @@ footer {
 }
 
 .footer-links a:hover {
-  color: var(--accent-green);
+  color: var(--accent-teal);
 }
 
 .footer-copy {
@@ -592,7 +598,7 @@ footer {
     background: var(--bg-secondary);
     flex-direction: column;
     padding: 1rem;
-    border-bottom: 1px solid rgba(0, 255, 0, 0.1);
+    border-bottom: 1px solid var(--border-color);
   }
 
   .nav-links.active {
