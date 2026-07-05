@@ -83,8 +83,7 @@ nav {
 }
 
 .nav-logo img {
-  width: 40px;
-  height: 40px;
+  display: none;
 }
 
 .nav-links {
@@ -141,8 +140,9 @@ nav {
 }
 
 .hero-logo {
-  width: 120px;
-  height: 120px;
+  width: 350px;
+  max-width: 90%;
+  height: auto;
   margin: 0 auto 2rem;
   animation: float 6s ease-in-out infinite;
 }
