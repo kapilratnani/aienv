@@ -100,6 +100,8 @@ agent:
     - npm install -g opencode-ai
   command:
     - opencode
+  env:
+    - GITHUB_TOKEN: "env:GITHUB_TOKEN"
   mounts:
     - source: /path/to/your/project
       target: /workspace
