@@ -1,5 +1,9 @@
 # 🔒 aienv
 
+<p align="center">
+  <img src="website/assets/logo.png" alt="aienv logo" width="300">
+</p>
+
 > Secure sandboxes for AI coding agents — like `virtualenv` for AI.
 
 **Bring your own agent.** aienv provides the sandbox, isolation, and audit trail.
