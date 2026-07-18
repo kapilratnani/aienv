@@ -157,8 +157,9 @@ func promptWorkdir(e *env.Env) error {
 			continue
 		}
 		e.Agent.Mounts = append(e.Agent.Mounts, env.Mount{
-			Source: absPath,
-			Target: "/workspace",
+			Source:   absPath,
+			Target:   "/workspace",
+			Writable: true,
 		})
 		return nil
 	}
