@@ -2,6 +2,7 @@ package docker
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -260,7 +261,7 @@ func Run(e *env.Env, exitMode bool) error {
 	entrypoint := append([]string{tag}, e.Agent.Command...)
 	entrypoint = append(entrypoint, e.Agent.Args...)
 	args = append(args, entrypoint...)
-	fmt.Printf("%v", args)
+	slog.Info("docker run", slog.Any("args", args))
 	cmd := exec.Command("docker", args...)
 	if exitMode {
 		cmd.Stdout = os.Stdout
